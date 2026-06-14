@@ -1,3 +1,6 @@
+# Guideline
+https://telua.vn/docupedia/project/proj_1781401826824
+
 # 📚 Docupedia (QuillFlow)
 
 **Docupedia** (hay còn gọi là QuillFlow) là một hệ thống quản lý tài liệu và cơ sở tri thức (Knowledge Base) hiện đại. Ứng dụng cung cấp cấu trúc quản lý dạng cây thư mục kết hợp cùng trình soạn thảo văn bản phong phú (Rich Text Editor). 
