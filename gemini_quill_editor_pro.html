@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="vi" class="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuillFlow - Trình soạn thảo văn bản chuyên nghiệp</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Highlight.js for Code Block Syntax Highlighting (Atom One Dark theme) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- Quill.js CSS (Theme Snow) -->
+  <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
+
+  <!-- Custom CSS for Quill Dark Mode Override & Transitions -->
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #475569;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Quill Editor Interface Overrides for Premium Aesthetic */
+    .ql-toolbar.ql-snow {
+      border: 1px solid #e2e8f0 !important;
+      border-top-left-radius: 0.5rem;
+      border-top-right-radius: 0.5rem;
+      background-color: #f8fafc;
+      transition: all 0.2s ease;
+    }
+    .ql-container.ql-snow {
+      border: 1px solid #e2e8f0 !important;
+      border-bottom-left-radius: 0.5rem;
+      border-bottom-right-radius: 0.5rem;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 1rem;
+      background-color: #ffffff;
+      transition: all 0.2s ease;
+    }
+    .ql-editor {
+      min-height: 350px;
+    }
+    .ql-editor.ql-blank::before {
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    /* Beautiful Table Styling for Quill v2 & Readers */
+    .ql-editor table, #view-mode-content table, #preview-read-content table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1.5rem 0;
+      border: 1px solid #cbd5e1;
+    }
+    .dark .ql-editor table, .dark #view-mode-content table, .dark #preview-read-content table {
+      border-color: #475569;
+    }
+    .ql-editor td, .ql-editor th, 
+    #view-mode-content td, #preview-read-content td,
+    #view-mode-content th, #preview-read-content th {
+      border: 1px solid #cbd5e1;
+      padding: 0.6rem 1rem;
+      min-width: 60px;
+      vertical-align: top;
+      text-align: left;
+    }
+    .dark .ql-editor td, .dark .ql-editor th,
+    .dark #view-mode-content td, .dark #preview-read-content td,
+    .dark #view-mode-content th, .dark #preview-read-content th {
+      border-color: #475569;
+    }
+
+    /* Code Block inside Editor & View Panels */
+    .ql-editor pre.ql-syntax, #view-mode-content pre, #preview-read-content pre {
+      background-color: #1e293b !important;
+      color: #f1f5f9 !important;
+      border-radius: 0.5rem;
+      padding: 1rem !important;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+      font-size: 0.9em !important;
+      overflow-x: auto;
+      box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+    }
+
+    /* */
+    /* Style cho khung soạn thảo Code Block trực tiếp trong Editor của Quill v2 */
+    .ql-editor .ql-code-block-container {
+      background-color: #1e293b !important;
+      color: #f1f5f9 !important;
+      border-radius: 0.5rem;
+      padding: 1rem !important;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+      font-size: 0.9em !important;
+      margin: 1rem 0 !important;
+      position: relative;
+    }
+
+    /* Style cố định chữ và nền cho SelectBox chọn ngôn ngữ lập trình (C++, Java, Python...) */
+    .ql-editor .ql-code-block-container select.ql-ui {
+      background-color: #334155 !important;
+      color: #f1f5f9 !important;
+      border: 1px solid #475569 !important;
+      border-radius: 0.375rem !important;
+      padding: 2px 8px !important;
+      font-size: 0.75rem !important;
+      font-weight: 500 !important;
+      cursor: pointer !important;
+      outline: none !important;
+      margin-bottom: 0.5rem;
+      display: inline-block;
+    }
+
+    /* Cố định chữ hiển thị cho các thẻ option bên trong select box */
+    .ql-editor .ql-code-block-container select.ql-ui option {
+      background-color: #1e293b !important;
+      color: #f1f5f9 !important;
+    }
+
+    /* Dark Mode overrides for Quill */
+    .dark .ql-toolbar.ql-snow {
+      background-color: #1e293b !important;
+      border-color: #334155 !important;
+    }
+    .dark .ql-container.ql-snow {
+      background-color: #0f172a !important;
+      border-color: #334155 !important;
+      color: #f1f5f9;
+    }
+    .dark .ql-stroke {
+      stroke: #94a3b8 !important;
+    }
+    .dark .ql-fill {
+      fill: #94a3b8 !important;
+    }
+    .dark .ql-picker {
+      color: #94a3b8 !important;
+    }
+    .dark .ql-picker-options {
+      background-color: #1e293b !important;
+      border-color: #334155 !important;
+    }
+    .dark .ql-picker-item {
+      color: #94a3b8 !important;
+    }
+    .dark .ql-picker-item:hover {
+      color: #f1f5f9 !important;
+    }
+    .dark .ql-snow .ql-picker.ql-expanded .ql-picker-label {
+      border-color: #475569 !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200 min-h-screen flex flex-col font-sans">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 py-3 px-6 flex items-center justify-between sticky top-0 z-40 transition-colors duration-200">
+    <div class="flex items-center space-x-3">
+      <div class="bg-indigo-600 text-white p-2 rounded-lg flex items-center justify-center shadow-md shadow-indigo-200 dark:shadow-none">
+        <i class="fa-solid fa-file-pen text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+          QuillFlow <span class="text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300 font-semibold px-2 py-0.5 rounded-full">v2.2 Tree</span>
+        </h1>
+        <p class="text-xs text-slate-400 dark:text-slate-500">Hệ thống quản lý tài liệu thông minh</p>
+      </div>
+    </div>
+
+    <!-- Active Document Title Input -->
+    <div class="hidden md:flex items-center space-x-2 flex-1 max-w-md mx-8">
+      <span class="text-slate-400 dark:text-slate-500"><i class="fa-regular fa-file-alt"></i></span>
+      <input type="text" id="doc-title-input" value="Tài liệu chưa đặt tên" 
+        class="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-none font-medium px-1 py-0.5 w-full text-slate-700 dark:text-slate-200 text-sm transition-all"
+        placeholder="Nhập tên tài liệu..." />
+    </div>
+
+    <!-- Controls Actions -->
+    <div class="flex items-center space-x-3">
+      <!-- Auto-save status -->
+      <span id="save-status" class="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline-flex items-center gap-1.5">
+        <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        Đã lưu tự động
+      </span>
+
+      <!-- Dark Mode Toggle -->
+      <button id="theme-toggle" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition" title="Chuyển chế độ Sáng/Tối">
+        <i class="fa-solid fa-moon dark:hidden text-lg"></i>
+        <i class="fa-solid fa-sun hidden dark:block text-lg text-amber-400"></i>
+      </button>
+
+      <!-- Sidebar Toggle for Mobile -->
+      <button id="sidebar-toggle-btn" class="p-2 lg:hidden rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition">
+        <i class="fa-solid fa-bars text-lg"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace Area -->
+  <div class="flex flex-1 overflow-hidden relative">
+    
+    <!-- Sidebar Panel: Document Tree & Tools -->
+    <aside id="sidebar-panel" class="fixed inset-y-0 left-0 transform -translate-x-full lg:relative lg:translate-x-0 transition-transform duration-300 z-30 w-80 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-[calc(100vh-65px)]">
+      <!-- Sidebar Header with Action Buttons -->
+      <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider">Cấu trúc thư mục</h2>
+          <span class="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-500 dark:text-slate-400 font-semibold" id="total-nodes-badge">0 mục</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-1">
+          <button onclick="openCreateModal('file', 'root')" class="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-950 px-2 py-2 rounded-md font-medium flex items-center justify-center gap-1.5 transition-all">
+            <i class="fa-regular fa-file-lines"></i> + Tài liệu gốc
+          </button>
+          <button onclick="openCreateModal('folder', 'root')" class="text-xs bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-indigo-300 dark:hover:bg-indigo-950 px-2 py-2 rounded-md font-medium flex items-center justify-center gap-1.5 transition-all">
+            <i class="fa-regular fa-folder"></i> + Thư mục gốc
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Tree View Container -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-1" id="tree-container">
+        <!-- Dynamic Tree structure will be rendered here -->
+        <div class="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
+          <i class="fa-solid fa-folder-open text-2xl mb-2 block animate-pulse"></i>
+          Đang tải cấu trúc thư mục...
+        </div>
+      </div>
+
+      <!-- Quick Document Stats -->
+      <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-3">
+        <h3 class="font-semibold text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider">Thống kê tài liệu</h3>
+        <div class="grid grid-cols-2 gap-2 text-center">
+          <div class="bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/80 shadow-sm">
+            <span class="block text-xl font-bold text-slate-800 dark:text-white" id="stat-words">0</span>
+            <span class="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-medium">Từ</span>
+          </div>
+          <div class="bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800/80 shadow-sm">
+            <span class="block text-xl font-bold text-slate-800 dark:text-white" id="stat-chars">0</span>
+            <span class="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-medium">Kí tự</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 px-1">
+          <span>Ước lượng đọc:</span>
+          <span class="font-medium text-slate-800 dark:text-slate-200" id="stat-read-time">~ 0 phút</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Overlay for mobile sidebar -->
+    <div id="sidebar-overlay" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-20 lg:hidden"></div>
+
+    <!-- Center Editor Section -->
+    <main class="flex-1 flex flex-col p-4 md:p-6 overflow-y-auto space-y-4">
+      <!-- Top controls within editor space -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div class="flex items-center space-x-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <span class="text-sm font-semibold truncate max-w-[140px] md:max-w-[300px]" id="active-filename">Tài liệu chưa đặt tên</span>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <!-- Premium Insert Table Helper Button -->
+          <button id="insert-table-btn" class="bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 dark:hover:bg-teal-950 text-teal-700 dark:text-teal-300 text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 transition" title="Chèn bảng tùy chỉnh vào tài liệu">
+            <i class="fa-solid fa-table"></i> Thêm Bảng
+          </button>
+
+          <!-- Toggle View Mode Button -->
+          <button id="view-mode-btn" class="bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950 text-amber-700 dark:text-amber-300 text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 transition" title="Chế độ xem đọc thử">
+            <i class="fa-regular fa-eye"></i> Xem tài liệu
+          </button>
+
+          <!-- Save Manual Button -->
+          <button id="save-doc-btn" class="bg-indigo-600 text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-indigo-700 shadow-md shadow-indigo-200 dark:shadow-none flex items-center gap-1.5 transition" title="Lưu thủ công (Ctrl+S)">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Lưu lại
+          </button>
+          
+          <!-- Copy HTML Button -->
+          <button id="copy-html-btn" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
+            <i class="fa-regular fa-copy"></i> Sao chép HTML
+          </button>
+
+          <!-- Export Dropdown Trigger -->
+          <div class="relative">
+            <button id="export-dropdown-btn" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-download"></i> Tải về <i class="fa-solid fa-chevron-down text-[10px]"></i>
+            </button>
+            
+            <!-- Export Dropdown Content -->
+            <div id="export-dropdown" class="hidden absolute right-0 mt-2 w-44 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50">
+              <button onclick="exportAs('html')" class="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 rounded-t-lg">
+                <i class="fa-brands fa-html5 text-orange-500 text-sm"></i> Tệp HTML (.html)
+              </button>
+              <button onclick="exportAs('txt')" class="w-full text-left px-4 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 rounded-b-lg">
+                <i class="fa-regular fa-file-lines text-blue-500 text-sm"></i> Tệp Văn bản (.txt)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- The Real Quill Editor Wrapper -->
+      <div class="flex-1 flex flex-col">
+        <div id="editor-container" class="shadow-sm">
+          <!-- Quill core loads in this node -->
+          <div id="editor">
+            <h1>Chào mừng bạn đến với QuillFlow! 🖊️</h1>
+            <p>Đây là <strong>phiên bản Quill v2</strong> chuyên nghiệp, đã được tích hợp bộ tô màu mã nguồn và bảng biểu.</p>
+            <p><br></p>
+            <h3>1. Trình diễn Code Block (Tự động tô màu cú pháp):</h3>
+            <pre class="ql-syntax" spellcheck="false">
+// Hàm tính toán đệ quy Fibonacci bằng Javascript
+function fibonacci(n) {
+  if (n <= 1) return n;
+  return fibonacci(n - 1) + fibonacci(n - 2);
+}
+console.log("Fibonacci(10) =", fibonacci(10));
+            </pre>
+            <p><br></p>
+            <h3>2. Trình diễn Bảng biểu (Table):</h3>
+            <p>Sử dụng nút <strong>"Thêm Bảng"</strong> ở góc trên bên phải để chèn bảng tùy chỉnh vào vị trí hiện tại của con trỏ chuột.</p>
+            <p><br></p>
+            <p class="ql-align-center"><em>Chúc bạn có những trải nghiệm quản lý tài liệu tuyệt vời! 🚀</em></p>
+          </div>
+        </div>
+
+        <!-- View Mode WorkSpace Container (Clean Reading layout) -->
+        <div id="view-mode-container" class="hidden flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 md:p-8 shadow-sm relative min-h-[350px] overflow-y-auto">
+          <!-- Back to edit badge -->
+          <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <i class="fa-solid fa-book-open text-indigo-500"></i> Chế độ đọc thử tài liệu
+            </span>
+            <button onclick="toggleViewMode(false)" class="text-xs bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-300 font-semibold px-2.5 py-1.5 rounded-lg transition flex items-center gap-1">
+              <i class="fa-solid fa-pen text-[10px]"></i> Chỉnh sửa tài liệu
+            </button>
+          </div>
+          
+          <!-- Read-only prose body -->
+          <article id="view-mode-content" class="prose dark:prose-invert max-w-none focus:outline-none">
+            <!-- Dynamic read-only HTML loads here -->
+          </article>
+
+          <!-- Beautiful Floating Edit Button -->
+          <button id="floating-edit-btn" onclick="toggleViewMode(false)" class="fixed bottom-8 right-8 z-50 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg shadow-indigo-300 dark:shadow-none hover:scale-105 transition-all flex items-center justify-center group" title="Chỉnh sửa tài liệu này">
+            <i class="fa-solid fa-pen text-base"></i>
+            <span class="max-w-0 overflow-hidden group-hover:max-w-xs group-hover:ml-2 transition-all duration-300 ease-out font-semibold text-sm whitespace-nowrap">Chỉnh sửa</span>
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- CUSTOM MODALS (Replacements for prompt/confirm) -->
+  
+  <!-- 1. Create Folder/File Modal -->
+  <div id="modal-create" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transform scale-95 transition-all">
+      <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2" id="modal-create-title">
+          <i class="fa-regular fa-folder-open text-amber-500"></i> Tạo thư mục mới
+        </h3>
+        <button onclick="closeModal('modal-create')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1" id="modal-create-label">Tên mục mới</label>
+          <input type="text" id="modal-create-input" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white" placeholder="Nhập tên tại đây..." />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Thư mục cha</label>
+          <select id="modal-create-parent" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white">
+            <option value="root">Thư mục gốc (Root)</option>
+          </select>
+        </div>
+      </div>
+      <div class="p-5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2.5">
+        <button onclick="closeModal('modal-create')" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition">Hủy</button>
+        <button id="modal-create-submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition">Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Rename Modal -->
+  <div id="modal-rename" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transform scale-95 transition-all">
+      <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i class="fa-regular fa-pen-to-square text-indigo-500"></i> Đổi tên danh mục
+        </h3>
+        <button onclick="closeModal('modal-rename')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-5">
+        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Tên mới</label>
+        <input type="text" id="modal-rename-input" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white" />
+      </div>
+      <div class="p-5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2.5">
+        <button onclick="closeModal('modal-rename')" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition">Hủy</button>
+        <button id="modal-rename-submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition">Thay đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Move Item Modal -->
+  <div id="modal-move" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transform scale-95 transition-all">
+      <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i class="fa-solid fa-arrows-up-down-left-right text-teal-500"></i> Di chuyển tệp tin
+        </h3>
+        <button onclick="closeModal('modal-move')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-5">
+        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Chọn thư mục đích</label>
+        <select id="modal-move-select" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white">
+          <option value="root">Thư mục gốc (Root)</option>
+        </select>
+      </div>
+      <div class="p-5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2.5">
+        <button onclick="closeModal('modal-move')" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition">Hủy</button>
+        <button id="modal-move-submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition">Di chuyển</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Delete Confirmation Modal -->
+  <div id="modal-delete" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transform scale-95 transition-all">
+      <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-rose-500">
+          <i class="fa-solid fa-triangle-exclamation"></i> Xác nhận xóa
+        </h3>
+        <button onclick="closeModal('modal-delete')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-5 space-y-2">
+        <p class="text-sm text-slate-600 dark:text-slate-300" id="modal-delete-warning">Bạn có chắc chắn muốn xóa mục này?</p>
+        <p class="text-xs text-rose-500 font-medium">* Lưu ý: Các tệp tin con bên trong thư mục này (nếu có) cũng sẽ bị xóa vĩnh viễn và không thể khôi phục.</p>
+      </div>
+      <div class="p-5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2.5">
+        <button onclick="closeModal('modal-delete')" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition">Hủy</button>
+        <button id="modal-delete-submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 transition">Chắc chắn xóa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Insert Table Modal -->
+  <div id="modal-insert-table" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transform scale-95 transition-all">
+      <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-teal-600 dark:text-teal-400">
+          <i class="fa-solid fa-table"></i> Cấu hình chèn Bảng
+        </h3>
+        <button onclick="closeModal('modal-insert-table')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Số hàng (Rows)</label>
+          <input type="number" id="table-rows" min="1" max="20" value="3" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 text-slate-800 dark:text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Số cột (Columns)</label>
+          <input type="number" id="table-cols" min="1" max="20" value="3" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-500 text-slate-800 dark:text-white" />
+        </div>
+      </div>
+      <div class="p-5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2.5">
+        <button onclick="closeModal('modal-insert-table')" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition">Hủy</button>
+        <button id="modal-insert-table-submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white transition">Chèn ngay</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast Message Box -->
+  <div id="toast-message" class="fixed bottom-5 right-5 z-50 transform translate-y-10 opacity-0 pointer-events-none transition-all duration-300 bg-slate-900 dark:bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-sm font-medium">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 dark:text-white text-base"></i>
+    <span id="toast-text">Đã hoàn thành thao tác!</span>
+  </div>
+
+  <!-- Quill core library -->
+  <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+
+  <!-- Core App JS Engine -->
+  <script>
+    // --- Application State ---
+    let quillInstance = null;
+    let currentDocId = 'default_draft';
+    let isDirty = false;
+    let isViewMode = false; // Flag to track view/edit mode
+
+    // --- Tree Data State ---
+    let treeData = {};
+    let expandedFolders = [];
+
+    // --- DOM Elements ---
+    const activeFileNameSpan = document.getElementById('active-filename');
+    const docTitleInput = document.getElementById('doc-title-input');
+    const saveStatusElement = document.getElementById('save-status');
+    const exportDropdown = document.getElementById('export-dropdown');
+    const exportDropdownBtn = document.getElementById('export-dropdown-btn');
+    const toastMessage = document.getElementById('toast-message');
+    const toastText = document.getElementById('toast-text');
+    const toastIcon = document.getElementById('toast-icon');
+    const treeContainer = document.getElementById('tree-container');
+    const totalNodesBadge = document.getElementById('total-nodes-badge');
+
+    // --- App Init ---
+    window.onload = function() {
+      // Expose Highlight.js to window context for Quill v2 Syntax Module integration
+      window.hljs = hljs;
+      
+      initQuill();
+      loadTheme();
+      loadTreeData();
+      initEventListeners();
+      renderTree();
+      loadDocument(currentDocId);
+    };
+
+    // --- Quill Configuration ---
+    function initQuill() {
+      const toolbarOptions = [
+        [{ 'header': [1, 2, 3, 4, false] }],
+        ['bold', 'italic', 'underline', 'strike'],        // text styles
+        [{ 'color': [] }, { 'background': [] }],          // dropdown colors
+        [{ 'align': [] }],                                // alignment
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],     // lists
+        ['blockquote', 'code-block'],                     // block formatting
+        ['link', 'image'],                                // media
+        ['clean']                                         // clear format
+      ];
+
+      quillInstance = new Quill('#editor', {
+        modules: {
+          syntax: true, // Enables highlight.js auto syntax highlighting
+          table: true,  // Enables native Table structure capabilities
+          toolbar: toolbarOptions
+        },
+        placeholder: 'Bắt đầu viết điều gì đó đặc biệt ở đây...',
+        theme: 'snow'
+      });
+
+      // Track editor changes
+      quillInstance.on('text-change', function() {
+        isDirty = true;
+        updateStats();
+        updateSaveIndicator(false); // Unsaved
+      });
+
+      // Auto save loop (every 5 seconds)
+      setInterval(function() {
+        if (isDirty) {
+          autoSaveActiveDocument();
+        }
+      }, 5000);
+    }
+
+    // --- UI Stats Management ---
+    function updateStats() {
+      const text = quillInstance.getText().trim();
+      const wordsCount = text.length > 0 ? text.split(/\s+/).length : 0;
+      const charsCount = text.length;
+      
+      // Calculate reading time (~200 words per min)
+      const readTimeMins = Math.ceil(wordsCount / 200);
+
+      document.getElementById('stat-words').innerText = wordsCount;
+      document.getElementById('stat-chars').innerText = charsCount;
+      document.getElementById('stat-read-time').innerText = `~ ${readTimeMins} phút`;
+    }
+
+    // Auto-save State feedback indicators
+    function updateSaveIndicator(isSaved) {
+      if (isSaved) {
+        saveStatusElement.innerHTML = `
+          <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          Đã lưu tự động
+        `;
+      } else {
+        saveStatusElement.innerHTML = `
+          <span class="h-2 w-2 rounded-full bg-amber-500 animate-bounce"></span>
+          Đang chỉnh sửa...
+        `;
+      }
+    }
+
+    // --- TREE-VIEW ENGINE & METADATA CONTROLLERS ---
+
+    // Load structure from storage
+    function loadTreeData() {
+      const storedTree = localStorage.getItem('quillflow_tree_data');
+      const storedExpanded = localStorage.getItem('quillflow_expanded_folders');
+      
+      if (storedExpanded) {
+        expandedFolders = JSON.parse(storedExpanded);
+      } else {
+        expandedFolders = ['root', 'folder_guides'];
+      }
+
+      if (storedTree) {
+        treeData = JSON.parse(storedTree);
+        
+        // Find first file in tree to activate if default draft is missing
+        if (!treeData[currentDocId]) {
+          const firstFileId = findFirstFileId(treeData);
+          currentDocId = firstFileId || 'default_draft';
+        }
+      } else {
+        // Build premium Default structure
+        treeData = {
+          'root': { id: 'root', type: 'folder', title: 'Thư mục gốc', children: ['folder_guides', 'doc_quicknote'] },
+          'folder_guides': { id: 'folder_guides', type: 'folder', title: '📚 Hướng dẫn sử dụng', parent: 'root', children: ['default_draft'] },
+          'default_draft': { id: 'default_draft', type: 'file', title: 'Chào mừng bạn đến với QuillFlow', parent: 'folder_guides' },
+          'doc_quicknote': { id: 'doc_quicknote', type: 'file', title: '📝 Ghi chú nhanh cá nhân', parent: 'root' }
+        };
+        
+        // Populate local storage if it's the very first load
+        localStorage.setItem(`quill_content_default_draft`, JSON.stringify([
+          { insert: "Chào mừng bạn đến với QuillFlow! 🖊️\n", attributes: { header: 1 } },
+          { insert: "Đây là " },
+          { insert: "demo cao cấp", attributes: { bold: true } },
+          { insert: " của trình soạn thảo văn bản được tích hợp hệ thống cấu trúc thư mục cây lồng nhau.\n\n" },
+          { insert: "Cách sử dụng các tính năng mới:\n", attributes: { header: 3 } },
+          { insert: "Nhấp vào nút " },
+          { insert: "+ Thư mục", attributes: { bold: true } },
+          { insert: " để tạo các nhóm danh mục riêng biệt.\n" },
+          { insert: "Bạn có thể nhấp vào biểu tượng thư mục để " },
+          { insert: "đóng/mở", attributes: { bold: true } },
+          { insert: " thư mục đó một cách mượt mà.\n" },
+          { insert: "Di chuyển chuột qua mỗi mục trong danh mục bên trái, các biểu tượng tác vụ nhanh (Tạo tệp con, Đổi tên, Di chuyển và Xóa) sẽ hiện ra.\n" },
+          { insert: "Sử dụng chức năng " },
+          { insert: "Di chuyển", attributes: { bold: true } },
+          { insert: " để chuyển đổi vị trí của các tài liệu giữa các thư mục cha một cách dễ dàng.\n\n" },
+          { insert: "Chúc bạn có những trải nghiệm quản lý tài liệu tuyệt vời! 🚀\n", attributes: { italic: true, align: "center" } }
+        ]));
+
+        localStorage.setItem(`quill_content_doc_quicknote`, JSON.stringify([
+          { insert: "📝 Ghi chú nhanh cá nhân\n", attributes: { header: 1 } },
+          { insert: "Nơi ghi nhanh mọi suy nghĩ, ý tưởng nảy sinh đột xuất...\n" }
+        ]));
+
+        saveTreeData();
+      }
+    }
+
+    function saveTreeData() {
+      localStorage.setItem('quillflow_tree_data', JSON.stringify(treeData));
+      localStorage.setItem('quillflow_expanded_folders', JSON.stringify(expandedFolders));
+    }
+
+    function findFirstFileId(tree) {
+      for (let key in tree) {
+        if (tree[key].type === 'file') return key;
+      }
+      return null;
+    }
+
+    // Toggle Folders Collapsible state
+    function toggleFolder(folderId, event) {
+      if (event) event.stopPropagation();
+      const index = expandedFolders.indexOf(folderId);
+      
+      if (index > -1) {
+        expandedFolders.splice(index, 1);
+      } else {
+        expandedFolders.push(folderId);
+      }
+      
+      saveTreeData();
+      renderTree();
+    }
+
+    // Dynamic Tree UI Generator
+    function renderTree() {
+      treeContainer.innerHTML = '';
+      let totalNodes = Object.keys(treeData).length - 1; // excluding 'root'
+      totalNodesBadge.innerText = `${totalNodes} mục`;
+
+      if (!treeData['root'] || treeData['root'].children.length === 0) {
+        treeContainer.innerHTML = `
+          <div class="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
+            <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
+            Hệ thống trống rỗng
+          </div>
+        `;
+        return;
+      }
+
+      const rootNode = treeData['root'];
+      rootNode.children.forEach(childId => {
+        const nodeHtml = generateNodeHtml(childId, 0);
+        treeContainer.insertAdjacentHTML('beforeend', nodeHtml);
+      });
+    }
+
+    // Generate responsive HTML for Folders/Files nodes
+    function generateNodeHtml(nodeId, depth = 0) {
+      const node = treeData[nodeId];
+      if (!node) return '';
+
+      let html = '';
+      
+      if (node.type === 'folder') {
+        const isOpen = expandedFolders.includes(nodeId);
+        const chevronIcon = isOpen ? 'fa-chevron-down' : 'fa-chevron-right';
+        const folderIcon = isOpen ? 'fa-folder-open text-amber-500 dark:text-amber-400' : 'fa-folder text-amber-500 dark:text-amber-400';
+        
+        // Folder item styling with modern multi-action icons (file add, folder add, rename, delete)
+        html += `
+          <div class="flex flex-col mb-1 select-none">
+            <!-- Folder row -->
+            <div class="group flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 text-sm transition-all cursor-pointer"
+                 style="padding-left: ${depth * 14 + 8}px" onclick="toggleFolder('${nodeId}', event)">
+              <div class="flex items-center space-x-2 truncate flex-1 mr-2">
+                <i class="fa-solid ${chevronIcon} text-[10px] text-slate-400 w-3 text-center transition-transform"></i>
+                <i class="fa-solid ${folderIcon} text-base"></i>
+                <span class="font-medium truncate text-slate-700 dark:text-slate-300">${node.title}</span>
+              </div>
+              
+              <!-- Action buttons container (Responsive: hover on desktop, always visible subtly on mobile) -->
+              <div class="flex items-center space-x-1 opacity-70 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-150" onclick="event.stopPropagation()">
+                <!-- ADD FILE BUTTON -->
+                <button onclick="openCreateModal('file', '${nodeId}')" class="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded transition" title="Tạo tài liệu trong thư mục này">
+                  <i class="fa-solid fa-file-circle-plus text-xs"></i>
+                </button>
+                <!-- ADD FOLDER BUTTON -->
+                <button onclick="openCreateModal('folder', '${nodeId}')" class="p-1 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 rounded transition" title="Tạo thư mục con trong thư mục này">
+                  <i class="fa-solid fa-folder-plus text-xs"></i>
+                </button>
+                <!-- RENAME BUTTON -->
+                <button onclick="openRenameModal('${nodeId}')" class="p-1 text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 rounded transition" title="Đổi tên">
+                  <i class="fa-regular fa-edit text-xs"></i>
+                </button>
+                <!-- DELETE BUTTON -->
+                <button onclick="openDeleteModal('${nodeId}')" class="p-1 text-slate-400 hover:text-rose-500 rounded transition" title="Xóa thư mục">
+                  <i class="fa-regular fa-trash-can text-xs"></i>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Folder children panel with hierarchy guideline -->
+            <div id="children-${nodeId}" class="relative ${isOpen ? 'block' : 'hidden'} ml-2 border-l border-slate-200 dark:border-slate-800">
+              ${node.children.length === 0 
+                ? `<div class="text-xs text-slate-400 dark:text-slate-500 italic py-1" style="padding-left: ${(depth + 1) * 14 + 10}px">Thư mục rỗng</div>`
+                : node.children.map(childId => generateNodeHtml(childId, depth + 1)).join('')
+              }
+            </div>
+          </div>
+        `;
+      } else if (node.type === 'file') {
+        const isActive = (nodeId === currentDocId);
+        const activeClass = isActive 
+          ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 border-indigo-200 dark:border-indigo-900/60'
+          : 'hover:bg-slate-100 dark:hover:bg-slate-800/60 border-transparent text-slate-600 dark:text-slate-400';
+        
+        html += `
+          <div class="group flex items-center justify-between py-1.5 px-2 rounded-lg border text-sm transition-all mb-0.5 select-none ${activeClass}"
+               style="padding-left: ${depth * 14 + 18}px" onclick="loadDocument('${nodeId}')">
+            <div class="flex items-center space-x-2 truncate flex-1 cursor-pointer mr-2">
+              <i class="fa-regular fa-file-lines text-indigo-500 text-sm"></i>
+              <span class="font-medium truncate">${node.title || 'Không có tiêu đề'}</span>
+            </div>
+            
+            <!-- Action buttons container (Responsive: hover on desktop, always visible subtly on mobile) -->
+            <div class="flex items-center space-x-1 opacity-70 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-150" onclick="event.stopPropagation()">
+              <button onclick="openMoveModal('${nodeId}')" class="p-1 text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 rounded" title="Di chuyển">
+                <i class="fa-solid fa-arrows-up-down-left-right text-xs"></i>
+              </button>
+              <button onclick="openRenameModal('${nodeId}')" class="p-1 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 rounded" title="Đổi tên">
+                <i class="fa-regular fa-edit text-xs"></i>
+              </button>
+              <button onclick="openDeleteModal('${nodeId}')" class="p-1 text-slate-400 hover:text-rose-500 rounded" title="Xóa tài liệu">
+                <i class="fa-regular fa-trash-can text-xs"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      return html;
+    }
+
+    // Populate Folder options in select dropdowns
+    function populateFolderOptions(selectElementId, skipId = null) {
+      const selectElement = document.getElementById(selectElementId);
+      selectElement.innerHTML = '<option value="root">Thư mục gốc (Root)</option>';
+      
+      // Recursive builder for options structure
+      function addOption(nodeId, prefix = '') {
+        const node = treeData[nodeId];
+        if (!node || node.type !== 'folder' || nodeId === 'root') return;
+        if (skipId && nodeId === skipId) return; // Prevent moving a folder into itself
+
+        const option = document.createElement('option');
+        option.value = nodeId;
+        option.textContent = prefix + node.title;
+        selectElement.appendChild(option);
+
+        node.children.forEach(childId => {
+          if (treeData[childId] && treeData[childId].type === 'folder') {
+            addOption(childId, prefix + ' └─ ');
+          }
+        });
+      }
+
+      // Start from root children
+      if (treeData['root']) {
+        treeData['root'].children.forEach(childId => {
+          addOption(childId);
+        });
+      }
+    }
+
+    // --- DIALOG MODALS EVENT HANDLERS ---
+    
+    // Open Dialog Modal helper
+    function openModal(modalId) {
+      const modal = document.getElementById(modalId);
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.querySelector('.transform').classList.remove('scale-95');
+        modal.querySelector('.transform').classList.add('scale-100');
+      }, 50);
+    }
+
+    // Close Dialog Modal helper
+    function closeModal(modalId) {
+      const modal = document.getElementById(modalId);
+      modal.querySelector('.transform').classList.add('scale-95');
+      modal.querySelector('.transform').classList.remove('scale-100');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+      }, 150);
+    }
+
+    // Create Modal Logic
+    function openCreateModal(type, defaultParentId = 'root') {
+      const input = document.getElementById('modal-create-input');
+      const submitBtn = document.getElementById('modal-create-submit');
+      const title = document.getElementById('modal-create-title');
+      const label = document.getElementById('modal-create-label');
+
+      input.value = '';
+      populateFolderOptions('modal-create-parent');
+      document.getElementById('modal-create-parent').value = defaultParentId;
+
+      if (type === 'folder') {
+        title.innerHTML = `<i class="fa-solid fa-folder-plus text-amber-500"></i> Tạo thư mục mới`;
+        label.textContent = "Tên thư mục mới";
+        input.placeholder = "Nhập tên thư mục...";
+      } else {
+        title.innerHTML = `<i class="fa-solid fa-file-circle-plus text-indigo-500"></i> Tạo tài liệu mới`;
+        label.textContent = "Tên tài liệu mới";
+        input.placeholder = "Nhập tên tài liệu...";
+      }
+
+      openModal('modal-create');
+
+      submitBtn.onclick = function() {
+        const name = input.value.trim();
+        const parentId = document.getElementById('modal-create-parent').value;
+        if (!name) {
+          showToast('Vui lòng nhập tên hợp lệ!', 'fa-triangle-exclamation', 'warning');
+          return;
+        }
+
+        const newId = (type === 'folder' ? 'folder_' : 'doc_') + Date.now();
+        
+        // Add to tree
+        treeData[newId] = {
+          id: newId,
+          type: type,
+          title: name,
+          parent: parentId,
+          ...(type === 'folder' ? { children: [] } : {})
+        };
+
+        // Add to parent children list
+        if (!treeData[parentId]) {
+          treeData['root'].children.push(newId);
+          treeData[newId].parent = 'root';
+        } else {
+          treeData[parentId].children.push(newId);
+        }
+
+        // Auto expand parent folder if closed
+        if (parentId !== 'root' && !expandedFolders.includes(parentId)) {
+          expandedFolders.push(parentId);
+        }
+
+        // If it's a file, init empty content and focus
+        if (type === 'file') {
+          localStorage.setItem(`quill_content_${newId}`, JSON.stringify([]));
+        }
+
+        saveTreeData();
+        renderTree();
+        closeModal('modal-create');
+        showToast(`Đã tạo thành công ${type === 'folder' ? 'thư mục' : 'tài liệu'} mới!`, 'fa-circle-check');
+
+        if (type === 'file') {
+          loadDocument(newId);
+        }
+      }
+    }
+
+    // Rename Modal Logic
+    function openRenameModal(nodeId) {
+      const node = treeData[nodeId];
+      if (!node) return;
+
+      const input = document.getElementById('modal-rename-input');
+      const submitBtn = document.getElementById('modal-rename-submit');
+      
+      input.value = node.title;
+      openModal('modal-rename');
+
+      submitBtn.onclick = function() {
+        const newTitle = input.value.trim();
+        if (!newTitle) {
+          showToast('Tên không được để trống!', 'fa-triangle-exclamation', 'warning');
+          return;
+        }
+
+        node.title = newTitle;
+        saveTreeData();
+        renderTree();
+
+        // If active document renamed, update headers
+        if (nodeId === currentDocId) {
+          docTitleInput.value = newTitle;
+          activeFileNameSpan.innerText = newTitle;
+        }
+
+        closeModal('modal-rename');
+        showToast('Đã đổi tên mục thành công!', 'fa-circle-check');
+      }
+    }
+
+    // Move Item Modal Logic
+    function openMoveModal(nodeId) {
+      const node = treeData[nodeId];
+      if (!node) return;
+
+      const submitBtn = document.getElementById('modal-move-submit');
+      populateFolderOptions('modal-move-select', nodeId);
+      document.getElementById('modal-move-select').value = node.parent || 'root';
+
+      openModal('modal-move');
+
+      submitBtn.onclick = function() {
+        const newParentId = document.getElementById('modal-move-select').value;
+        if (node.parent === newParentId) {
+          closeModal('modal-move');
+          return;
+        }
+
+        // Remove from old parent
+        const oldParent = treeData[node.parent];
+        if (oldParent) {
+          oldParent.children = oldParent.children.filter(id => id !== nodeId);
+        }
+
+        // Set to new parent
+        node.parent = newParentId;
+        const newParent = treeData[newParentId];
+        if (newParent) {
+          newParent.children.push(nodeId);
+          // Auto expand destination
+          if (!expandedFolders.includes(newParentId)) {
+            expandedFolders.push(newParentId);
+          }
+        }
+
+        saveTreeData();
+        renderTree();
+        closeModal('modal-move');
+        showToast('Đã di chuyển thành công!', 'fa-circle-check');
+      }
+    }
+
+    // Delete Modal Logic
+    function openDeleteModal(nodeId) {
+      const node = treeData[nodeId];
+      if (!node) return;
+
+      const submitBtn = document.getElementById('modal-delete-submit');
+      const warning = document.getElementById('modal-delete-warning');
+
+      if (node.type === 'folder') {
+        warning.innerHTML = `Bạn có chắc chắn muốn xóa thư mục "<strong>${node.title}</strong>" ?`;
+      } else {
+        warning.innerHTML = `Bạn có chắc chắn muốn xóa tài liệu "<strong>${node.title}</strong>" ?`;
+      }
+
+      openModal('modal-delete');
+
+      submitBtn.onclick = function() {
+        deleteNodeAndChildren(nodeId);
+        saveTreeData();
+        renderTree();
+        closeModal('modal-delete');
+        showToast('Đã xóa tệp tin thành công!', 'fa-trash');
+
+        // Check if current active doc was deleted
+        if (!treeData[currentDocId]) {
+          const firstId = findFirstFileId(treeData);
+          if (firstId) {
+            loadDocument(firstId);
+          } else {
+            // Create a brand new default file if everything is wiped out
+            createNewDefaultDoc();
+          }
+        }
+      }
+    }
+
+    // Helper to recursively delete folders and child files
+    function deleteNodeAndChildren(nodeId) {
+      const node = treeData[nodeId];
+      if (!node) return;
+
+      // Unlink from parent
+      const parentNode = treeData[node.parent];
+      if (parentNode) {
+        parentNode.children = parentNode.children.filter(id => id !== nodeId);
+      }
+
+      if (node.type === 'folder') {
+        // Deep copy of array to avoid mutation bugs during loop
+        const children = [...node.children];
+        children.forEach(childId => {
+          deleteNodeAndChildren(childId);
+        });
+      } else {
+        // Delete quill editor text storage
+        localStorage.removeItem(`quill_content_${nodeId}`);
+      }
+
+      // Delete node metadata
+      delete treeData[nodeId];
+    }
+
+    // Auto recovery helper
+    function createNewDefaultDoc() {
+      const newId = 'doc_' + Date.now();
+      treeData[newId] = {
+        id: newId,
+        type: 'file',
+        title: 'Tài liệu hướng dẫn mẫu',
+        parent: 'root'
+      };
+      treeData['root'].children.push(newId);
+      localStorage.setItem(`quill_content_${newId}`, JSON.stringify([]));
+      saveTreeData();
+      renderTree();
+      loadDocument(newId);
+    }
+
+    // --- SOẠN THẢO VÀ LƯU TRỮ VĂN BẢN ---
+
+    function loadDocument(id) {
+      currentDocId = id;
+      const node = treeData[id];
+      if (!node) return;
+
+      // Update Top document titles
+      docTitleInput.value = node.title;
+      activeFileNameSpan.innerText = node.title;
+
+      // Load contents
+      const content = localStorage.getItem(`quill_content_${id}`);
+      if (content) {
+        try {
+          quillInstance.setContents(JSON.parse(content));
+        } catch (e) {
+          quillInstance.setText('');
+        }
+      } else {
+        quillInstance.setText('');
+      }
+
+      // Update sidebar visual selections
+      renderTree();
+      isDirty = false;
+      updateSaveIndicator(true);
+      updateStats();
+      
+      // If currently in view mode, update the rendered view as well
+      if (isViewMode) {
+        const html = quillInstance.getSemanticHTML();
+        document.getElementById('view-mode-content').innerHTML = html || '<p class="text-slate-400 italic">Tài liệu trống...</p>';
+      }
+
+      closeMobileSidebar();
+    }
+
+    function autoSaveActiveDocument() {
+      if (!quillInstance || !treeData[currentDocId]) return;
+      
+      // Save content
+      const delta = quillInstance.getContents();
+      localStorage.setItem(`quill_content_${currentDocId}`, JSON.stringify(delta));
+
+      // Save title updates from input
+      const titleText = docTitleInput.value.trim() || 'Tài liệu không tên';
+      treeData[currentDocId].title = titleText;
+      activeFileNameSpan.innerText = titleText;
+
+      saveTreeData();
+      
+      // Silent render tree to update title without losing scroll/state
+      renderTree();
+
+      isDirty = false;
+      updateSaveIndicator(true);
+    }
+
+    // View/Edit mode switching handler
+    function toggleViewMode(viewModeOn) {
+      isViewMode = viewModeOn;
+      const editorContainer = document.getElementById('editor-container');
+      const viewModeContainer = document.getElementById('view-mode-container');
+      const viewModeBtn = document.getElementById('view-mode-btn');
+      const insertTableBtn = document.getElementById('insert-table-btn');
+
+      if (viewModeOn) {
+        // Auto-save active progress first
+        autoSaveActiveDocument();
+
+        // Switch container view states
+        editorContainer.classList.add('hidden');
+        viewModeContainer.classList.remove('hidden');
+        
+        // Ẩn nút Thêm Bảng ở chế độ Xem tài liệu
+        if (insertTableBtn) insertTableBtn.classList.add('hidden');
+
+        // Populate view-only article with semantic HTML
+        const html = quillInstance.getSemanticHTML();
+        document.getElementById('view-mode-content').innerHTML = html || '<p class="text-slate-400 dark:text-slate-500 italic">Tài liệu chưa có nội dung. Nhấp vào nút "Chỉnh sửa" để bắt đầu viết...</p>';
+
+        // Update toolbar button style to edit mode trigger
+        viewModeBtn.innerHTML = `<i class="fa-regular fa-keyboard"></i> Sửa tài liệu`;
+        viewModeBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-md shadow-indigo-200 dark:shadow-none flex items-center gap-1.5 transition";
+        viewModeBtn.title = "Quay lại chế độ chỉnh sửa";
+        showToast('Đang ở chế độ Xem (Đọc thử)', 'fa-eye');
+      } else {
+        // Switch container view states back
+        editorContainer.classList.remove('hidden');
+        viewModeContainer.classList.add('hidden');
+        
+        // Hiện lại nút Thêm Bảng ở chế độ Chỉnh sửa
+        if (insertTableBtn) insertTableBtn.classList.remove('hidden');
+
+        // Restore toolbar button style
+        viewModeBtn.innerHTML = `<i class="fa-regular fa-eye"></i> Xem tài liệu`;
+        viewModeBtn.className = "bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950 text-amber-700 dark:text-amber-300 text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5 transition";
+        viewModeBtn.title = "Chế độ xem đọc thử";
+
+        // Re-focus writer
+        quillInstance.focus();
+        showToast('Đã quay lại chế độ Chỉnh sửa', 'fa-pen');
+      }
+    }
+
+    // --- INTERACTION EVENTS ---
+    function initEventListeners() {
+      // Toggle view mode event listener
+      document.getElementById('view-mode-btn').addEventListener('click', function() {
+        toggleViewMode(!isViewMode);
+      });
+
+      // Manual save trigger
+      document.getElementById('save-doc-btn').addEventListener('click', function() {
+        autoSaveActiveDocument();
+        toggleViewMode(true); // Tự động chuyển sang chế độ Xem tài liệu sau khi lưu
+        showToast('Đã lưu và chuyển sang chế độ Xem tài liệu!', 'fa-cloud-arrow-up');
+      });
+
+      // Keyboard Shortcut (Ctrl + S / Cmd + S) for Manual Save
+      document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+          e.preventDefault();
+          autoSaveActiveDocument();
+          toggleViewMode(true); // Tự động chuyển sang chế độ Xem tài liệu sau khi lưu
+          showToast('Đã lưu và chuyển sang chế độ Xem tài liệu!', 'fa-cloud-arrow-up');
+        }
+      });
+
+      // Open Table Insertion Modal
+      document.getElementById('insert-table-btn').addEventListener('click', function() {
+        openModal('modal-insert-table');
+      });
+
+      // Confirm Table Insertion Logic
+      document.getElementById('modal-insert-table-submit').addEventListener('click', function() {
+        const rows = parseInt(document.getElementById('table-rows').value) || 3;
+        const cols = parseInt(document.getElementById('table-cols').value) || 3;
+
+        if (rows < 1 || cols < 1) {
+          showToast('Số dòng và cột phải lớn hơn 0!', 'fa-triangle-exclamation', 'warning');
+          return;
+        }
+
+        try {
+          // Get Quill native Table Module and execute table generation
+          const tableModule = quillInstance.getModule('table');
+          tableModule.insertTable(rows, cols);
+          
+          closeModal('modal-insert-table');
+          showToast(`Đã chèn thành công bảng ${rows}x${cols}!`, 'fa-circle-check');
+          isDirty = true;
+        } catch (err) {
+          console.error(err);
+          showToast('Đã xảy ra lỗi. Hãy click chuột vào trình soạn thảo trước khi chèn bảng!', 'fa-triangle-exclamation', 'warning');
+        }
+      });
+
+      // Synchronize Title Input to heading top real-time
+      docTitleInput.addEventListener('input', function(e) {
+        isDirty = true;
+        const newTitle = e.target.value || 'Tài liệu không tên';
+        activeFileNameSpan.innerText = newTitle;
+        if (treeData[currentDocId]) {
+          treeData[currentDocId].title = newTitle;
+        }
+        updateSaveIndicator(false);
+      });
+
+      // Export dropdown menu trigger
+      exportDropdownBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        exportDropdown.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', function() {
+        exportDropdown.classList.add('hidden');
+      });
+
+      // Theme toggle configuration
+      document.getElementById('theme-toggle').addEventListener('click', function() {
+        let htmlElement = document.documentElement;
+        if (htmlElement.classList.contains('dark')) {
+          htmlElement.classList.remove('dark');
+          localStorage.setItem('theme', 'light');
+        } else {
+          htmlElement.classList.add('dark');
+          localStorage.setItem('theme', 'dark');
+        }
+      });
+
+      // Copy HTML trigger
+      document.getElementById('copy-html-btn').addEventListener('click', function() {
+        const html = quillInstance.getSemanticHTML();
+        
+        // Handle custom copy fallback structure due to iframe secure policies
+        const textarea = document.createElement('textarea');
+        textarea.value = html;
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        
+        try {
+          document.execCommand('copy');
+          showToast('Đã sao chép mã HTML thành công!', 'fa-clipboard');
+        } catch (err) {
+          showToast('Có lỗi xảy ra khi sao chép!', 'fa-triangle-exclamation', 'warning');
+        }
+        
+        document.body.removeChild(textarea);
+      });
+
+      // Mobile responsive sidebar layout actions
+      const sidebarOverlay = document.getElementById('sidebar-overlay');
+      const sidebarPanel = document.getElementById('sidebar-panel');
+      const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+
+      sidebarToggleBtn.addEventListener('click', function() {
+        sidebarPanel.classList.remove('-translate-x-full');
+        sidebarOverlay.classList.remove('hidden');
+      });
+
+      sidebarOverlay.addEventListener('click', closeMobileSidebar);
+    }
+
+    function closeMobileSidebar() {
+      const sidebarOverlay = document.getElementById('sidebar-overlay');
+      const sidebarPanel = document.getElementById('sidebar-panel');
+      sidebarPanel.classList.add('-translate-x-full');
+      sidebarOverlay.classList.add('hidden');
+    }
+
+    function loadTheme() {
+      const savedTheme = localStorage.getItem('theme');
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+
+    // Export formats controller
+    function exportAs(format) {
+      const title = docTitleInput.value || 'quill_document';
+      let content = '';
+      let mimeType = 'text/plain';
+      let extension = 'txt';
+
+      if (format === 'html') {
+        content = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; }
+        h1, h2, h3 { color: #111; margin-top: 1.5em; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        td, th { border: 1px solid #cbd5e1; padding: 10px; }
+        blockquote { border-left: 4px solid #ddd; padding-left: 15px; color: #666; font-style: italic; }
+        pre { background: #1e293b; color: #f1f5f9; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    ${quillInstance.getSemanticHTML()}
+</body>
+</html>`;
+        mimeType = 'text/html';
+        extension = 'html';
+      } else {
+        content = quillInstance.getText();
+      }
+
+      // Create a blob file download link
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title.toLowerCase().replace(/[^a-z0-9]/gi, '_')}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast(`Đã tải về tệp tin thành công dưới dạng .${extension}!`, 'fa-circle-arrow-down');
+    }
+
+    // Toast alerts dispatcher
+    function showToast(message, iconName = 'fa-circle-check', type = 'info') {
+      toastText.innerText = message;
+      
+      toastIcon.className = `fa-solid ${iconName}`;
+      if (type === 'warning') {
+        toastIcon.className += ' text-rose-400';
+      } else {
+        toastIcon.className += ' text-emerald-400 dark:text-white';
+      }
+
+      toastMessage.classList.remove('translate-y-10', 'opacity-0', 'pointer-events-none');
+      toastMessage.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(function() {
+        toastMessage.classList.add('translate-y-10', 'opacity-0', 'pointer-events-none');
+        toastMessage.classList.remove('translate-y-0', 'opacity-100');
+      }, 3500);
+    }
+  </script>
+</body>
+</html>

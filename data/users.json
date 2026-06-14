@@ -1,0 +1,20 @@
+{
+  "users": [
+    {
+      "id": "user_admin",
+      "username": "admin",
+      "password_hash": "pbkdf2:sha256:260000$iSWmbGFjY8HhGjUA$028b32208f4ba387513256051edb47403511d7cd227d5126369d4bd05420e2cb",
+      "display_name": "Administrator",
+      "email": "",
+      "role": "admin",
+      "is_active": true,
+      "created_at": "2026-06-09T16:45:59.958534Z",
+      "last_login": "2026-06-13T11:46:36.030550Z",
+      "updated_at": "2026-06-13T11:46:36.030794Z"
+    }
+  ],
+  "_meta": {
+    "version": "1.0",
+    "created_at": "2026-06-09T16:45:59.958555Z"
+  }
+}

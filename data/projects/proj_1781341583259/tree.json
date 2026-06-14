@@ -1,0 +1,19 @@
+{
+  "project_id": "proj_1781341583259",
+  "root": {
+    "id": "root",
+    "type": "folder",
+    "title": "Thư mục gốc",
+    "children": [
+      "doc_1781343677641"
+    ]
+  },
+  "nodes": {
+    "doc_1781343677641": {
+      "id": "doc_1781343677641",
+      "type": "file",
+      "title": "sss"
+    }
+  },
+  "updated_at": "2026-06-13T09:41:17.642213Z"
+}

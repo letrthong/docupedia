@@ -1,0 +1,17 @@
+# docker-compose for Docupedia
+version: '3.8'
+
+services:
+  docupedia:
+    container_name: docupedia_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/app/config/docupedia
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_DEBUG=true
+      - JWT_SECRET_KEY=docupedia-secret-key-change-in-production
+    restart: unless-stopped
