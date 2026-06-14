@@ -1,0 +1,17 @@
+{
+  "id": "doc_1781425095698",
+  "type": "file",
+  "title": "01 sfaf",
+  "parent_id": "folder_1780390104580",
+  "content": {
+    "ops": [
+      {
+        "insert": "ss\n"
+      }
+    ]
+  },
+  "created_by": "user_admin",
+  "updated_by": "user_admin",
+  "created_at": "2026-06-14T08:18:15.698264Z",
+  "updated_at": "2026-06-14T08:28:25.198552Z"
+}

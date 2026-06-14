@@ -114,6 +114,12 @@ export function ProjectProvider({ children }) {
       const response = await documentsApi.update(currentProject.id, docId, data);
       if (response.success) {
         setCurrentDocument(response.data);
+        
+        // Làm mới (Refresh) lại cây thư mục phòng khi tên tài liệu bị thay đổi
+        const treeRes = await projectsApi.getTree(currentProject.id);
+        if (treeRes.success) {
+          setTree(treeRes.data);
+        }
       }
       return response;
     } catch (error) {
@@ -200,6 +206,63 @@ export function ProjectProvider({ children }) {
     }
   }, [currentProject]);
 
+  // Hàm hỗ trợ đổi tên tài liệu
+  const updateDocument = useCallback(async (docId, data) => {
+    if (!currentProject) return { success: false };
+
+    try {
+      const response = await documentsApi.update(currentProject.id, docId, data);
+      if (response.success) {
+        const treeRes = await projectsApi.getTree(currentProject.id);
+        if (treeRes.success) {
+          setTree(treeRes.data);
+        }
+        if (currentDocument?.id === docId && data.title) {
+          setCurrentDocument(prev => prev ? { ...prev, title: data.title } : prev);
+        }
+      }
+      return response;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }, [currentProject, currentDocument]);
+
+  // Hàm hỗ trợ đổi tên/di chuyển thư mục
+  const updateFolder = useCallback(async (folderId, data) => {
+    if (!currentProject) return { success: false };
+
+    try {
+      const response = await foldersApi.update(currentProject.id, folderId, data);
+      if (response.success) {
+        const treeRes = await projectsApi.getTree(currentProject.id);
+        if (treeRes.success) {
+          setTree(treeRes.data);
+        }
+      }
+      return response;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }, [currentProject]);
+
+  // Hàm hỗ trợ di chuyển tài liệu
+  const moveDocument = useCallback(async (docId, newParentId) => {
+    if (!currentProject) return { success: false };
+
+    try {
+      const response = await documentsApi.move(currentProject.id, docId, newParentId);
+      if (response.success) {
+        const treeRes = await projectsApi.getTree(currentProject.id);
+        if (treeRes.success) {
+          setTree(treeRes.data);
+        }
+      }
+      return response;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }, [currentProject]);
+
   // Check user permission
   const hasPermission = useCallback((permission) => {
     if (!currentProject) return false;
@@ -222,6 +285,9 @@ export function ProjectProvider({ children }) {
     deleteFolder,
     hasPermission,
     setCurrentDocument,
+    updateDocument,
+    updateFolder,
+    moveDocument,
   };
 
   return (

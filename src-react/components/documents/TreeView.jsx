@@ -17,6 +17,13 @@ import { useProject } from '../../contexts/ProjectContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Button, Modal, Input } from '../common';
 
+// Hàm hỗ trợ sắp xếp: Ưu tiên Folder xếp trước File, sau đó xếp theo thứ tự ABC
+const sortNodes = (a, b) => {
+  if (a.type === 'folder' && b.type !== 'folder') return -1;
+  if (a.type !== 'folder' && b.type === 'folder') return 1;
+  return (a.title || '').localeCompare(b.title || '');
+};
+
 function TreeNode({ 
   node, 
   level = 0, 
@@ -27,6 +34,7 @@ function TreeNode({
   onCreateFolder,
   onDelete,
   onRename,
+  onMove,
   canCreate,
   canEdit,
   canDelete,
@@ -43,7 +51,7 @@ function TreeNode({
   
   const isFolder = node.type === 'folder';
   const isSelected = node.id === selectedId;
-  const children = node.children?.map(id => nodes[id]).filter(Boolean) || [];
+  const children = node.children?.map(id => nodes[id]).filter(Boolean).sort(sortNodes) || [];
 
   const handleClick = () => {
     if (isFolder) {
@@ -148,16 +156,28 @@ function TreeNode({
                 </>
               )}
               {canEdit && (
-              <button
-                onClick={() => {
-                  setShowMenu(false);
-                  onRename(node);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-              >
-                <Edit2 className="w-4 h-4 text-slate-400" />
-                Đổi tên
-              </button>
+          <>
+            <button
+              onClick={() => {
+                setShowMenu(false);
+                onRename(node);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            >
+              <Edit2 className="w-4 h-4 text-slate-400" />
+              Đổi tên
+            </button>
+            <button
+              onClick={() => {
+                setShowMenu(false);
+                onMove(node);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+            >
+              <Folder className="w-4 h-4 text-slate-400" />
+              Di chuyển
+            </button>
+          </>
               )}
               {canDelete && (
               <button
@@ -192,6 +212,7 @@ function TreeNode({
               onCreateFolder={onCreateFolder}
               onDelete={onDelete}
               onRename={onRename}
+              onMove={onMove}
               canCreate={canCreate}
               canEdit={canEdit}
               canDelete={canDelete}
@@ -207,14 +228,16 @@ function TreeNode({
 function TreeView() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { tree, currentProject, currentDocument, loadDocument, createDocument, createFolder, deleteDocument, deleteFolder, hasPermission } = useProject();
+  const { tree, currentProject, currentDocument, loadDocument, createDocument, createFolder, deleteDocument, deleteFolder, updateDocument, updateFolder, moveDocument, hasPermission } = useProject();
   const { success, error } = useToast();
   
   const [newDocModal, setNewDocModal] = useState({ open: false, parentId: 'root' });
   const [newFolderModal, setNewFolderModal] = useState({ open: false, parentId: 'root' });
   const [deleteModal, setDeleteModal] = useState({ open: false, node: null });
   const [renameModal, setRenameModal] = useState({ open: false, node: null });
+  const [moveModal, setMoveModal] = useState({ open: false, node: null });
   const [newTitle, setNewTitle] = useState('');
+  const [targetFolderId, setTargetFolderId] = useState('root');
   const [searchTerm, setSearchTerm] = useState('');
 
   const canCreate = hasPermission('create');
@@ -290,6 +313,61 @@ function TreeView() {
     }
   };
 
+  const handleRename = async () => {
+    if (!newTitle.trim() || !renameModal.node) return;
+    const node = renameModal.node;
+    
+    const result = node.type === 'folder'
+      ? await updateFolder(node.id, { title: newTitle.trim() })
+      : await updateDocument(node.id, { title: newTitle.trim() });
+      
+    if (result.success) {
+      success('Đổi tên thành công');
+      setRenameModal({ open: false, node: null });
+      setNewTitle('');
+    } else {
+      error(result.error || 'Không thể đổi tên');
+    }
+  };
+
+  const handleMove = async () => {
+    if (!moveModal.node) return;
+    const node = moveModal.node;
+    
+    const result = node.type === 'folder'
+      ? await updateFolder(node.id, { parent_id: targetFolderId })
+      : await moveDocument(node.id, targetFolderId);
+      
+    if (result.success) {
+      success('Di chuyển thành công');
+      setMoveModal({ open: false, node: null });
+    } else {
+      error(result.error || 'Không thể di chuyển');
+    }
+  };
+
+  const getFolderOptions = () => {
+    const options = [{ id: 'root', title: 'Thư mục gốc' }];
+    if (!tree?.nodes) return options;
+
+    const getDescendantIds = (nodeId) => {
+      const node = tree.nodes[nodeId];
+      if (!node || !node.children) return [];
+      return node.children.reduce((acc, childId) => [...acc, childId, ...getDescendantIds(childId)], []);
+    };
+
+    const invalidTargetIds = moveModal.node?.type === 'folder' 
+      ? [moveModal.node.id, ...getDescendantIds(moveModal.node.id)]
+      : [];
+    
+    Object.values(tree.nodes).forEach(n => {
+      if (n.type === 'folder' && !invalidTargetIds.includes(n.id)) {
+        options.push({ id: n.id, title: n.title });
+      }
+    });
+    return options;
+  };
+
   if (!tree) {
     return (
       <div className="flex items-center justify-center text-slate-400 py-4 gap-2">
@@ -299,7 +377,7 @@ function TreeView() {
     );
   }
 
-  const rootChildren = tree.root?.children?.map(id => tree.nodes?.[id]).filter(Boolean) || [];
+  const rootChildren = tree.root?.children?.map(id => tree.nodes?.[id]).filter(Boolean).sort(sortNodes) || [];
   
   const checkMatch = (n, term) => {
     if (!term) return true;
@@ -408,6 +486,12 @@ function TreeView() {
                 setRenameModal({ open: true, node });
               }
             }}
+        onMove={(node) => {
+          if (canEdit) {
+            setTargetFolderId(node.parent || 'root');
+            setMoveModal({ open: true, node });
+          }
+        }}
             canCreate={canCreate}
             canEdit={canEdit}
             canDelete={canDelete}
@@ -493,6 +577,64 @@ function TreeView() {
           )}
         </p>
       </Modal>
+
+  {/* Rename Modal */}
+  <Modal
+    isOpen={renameModal.open}
+    onClose={() => setRenameModal({ open: false, node: null })}
+    title="Đổi tên"
+    footer={
+      <>
+        <Button variant="secondary" onClick={() => setRenameModal({ open: false, node: null })}>
+          Hủy
+        </Button>
+        <Button onClick={handleRename}>
+          Lưu
+        </Button>
+      </>
+    }
+  >
+    <Input
+      label="Tên mới"
+      value={newTitle}
+      onChange={(e) => setNewTitle(e.target.value)}
+      placeholder="Nhập tên mới..."
+      autoFocus
+      onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+    />
+  </Modal>
+
+  {/* Move Modal */}
+  <Modal
+    isOpen={moveModal.open}
+    onClose={() => setMoveModal({ open: false, node: null })}
+    title="Di chuyển"
+    footer={
+      <>
+        <Button variant="secondary" onClick={() => setMoveModal({ open: false, node: null })}>
+          Hủy
+        </Button>
+        <Button onClick={handleMove}>
+          Di chuyển
+        </Button>
+      </>
+    }
+  >
+    <div className="flex flex-col gap-2">
+      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Chọn thư mục đích</label>
+      <select
+        value={targetFolderId}
+        onChange={(e) => setTargetFolderId(e.target.value)}
+        className="w-full p-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      >
+        {getFolderOptions().map(opt => (
+          <option key={opt.id} value={opt.id}>
+            {opt.title}
+          </option>
+        ))}
+      </select>
+    </div>
+  </Modal>
     </div>
   );
 }

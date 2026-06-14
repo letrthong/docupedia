@@ -39,6 +39,9 @@ class CustomImage extends BaseImage {
 }
 Quill.register(CustomImage, true);
 
+// Cờ kiểm tra tránh đăng ký module nhiều lần (đặc biệt trong React Strict Mode)
+let isImageResizeRegistered = false;
+
 // Quill toolbar configuration
 const modules = {
   toolbar: [
@@ -82,11 +85,13 @@ function Editor() {
   const [hasChanges, setHasChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [isViewMode, setIsViewMode] = useState(true); // Default to view mode
-  const [isQuillLoaded, setIsQuillLoaded] = useState(false);
+  const [isQuillLoaded, setIsQuillLoaded] = useState(isImageResizeRegistered);
   
+  const currentDocIdRef = useRef(null);
   const quillRef = useRef(null);
   const saveTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
+  const handleSaveRef = useRef(null);
 
   const canEdit = isAuthenticated && hasPermission('edit');
   const isAutoSaveEnabled = localStorage.getItem('enableAutoSave') === 'true';
@@ -94,44 +99,66 @@ function Editor() {
 
   // Tải module ImageResize động để tránh lỗi circular dependency của Vite
   useEffect(() => {
-    import('quill-image-resize-module-react').then(module => {
-      Quill.register('modules/imageResize', module.default);
+    if (isImageResizeRegistered) {
       setIsQuillLoaded(true);
+      return;
+    }
+    
+    let isMounted = true;
+    import('quill-image-resize-module-react').then(module => {
+      if (!isImageResizeRegistered) {
+        const ImageResize = module.default || module;
+        Quill.register('modules/imageResize', ImageResize);
+        isImageResizeRegistered = true;
+      }
+      if (isMounted) setIsQuillLoaded(true);
     }).catch(err => {
       console.warn("Could not load Quill modules", err);
-      setIsQuillLoaded(true);
+      if (isMounted) setIsQuillLoaded(true);
     });
+    return () => { isMounted = false; };
   }, []);
 
   // Load document content - default to view mode
   useEffect(() => {
     if (currentDocument && isQuillLoaded) {
-      setTitle(currentDocument.title || '');
-      setIsViewMode(true); // Always start in view mode
-      setHasChanges(false);
-      setLastSaved(currentDocument.updated_at);
+      const isNewDoc = currentDocIdRef.current !== currentDocument.id;
       
-      // Convert Quill delta to string or use as is
-      const docContent = currentDocument.content;
-      if (typeof docContent === 'object' && docContent.ops) {
-        // It's a delta - need to convert to HTML for view mode
-        setContent(docContent);
-        // We'll set HTML content after Quill converts it
-        setTimeout(() => {
-          if (quillRef.current) {
-            const editor = quillRef.current.getEditor();
-            editor.setContents(docContent);
-            setHtmlContent(editor.root.innerHTML);
+      if (isNewDoc) {
+        currentDocIdRef.current = currentDocument.id;
+        setTitle(currentDocument.title || '');
+        setIsViewMode(true); // Always start in view mode for NEW documents
+        setHasChanges(false);
+        setLastSaved(currentDocument.updated_at);
+        
+        // Convert Quill delta to string or use as is
+        const docContent = currentDocument.content;
+        if (typeof docContent === 'object' && docContent.ops) {
+          setContent(docContent);
+          try {
+            const tempContainer = document.createElement('div');
+            tempContainer.style.display = 'none';
+            document.body.appendChild(tempContainer);
+            const tempQuill = new Quill(tempContainer, { readOnly: true });
+            tempQuill.setContents(docContent);
+            setHtmlContent(tempContainer.querySelector('.ql-editor').innerHTML);
+            document.body.removeChild(tempContainer);
+          } catch (err) {
+            console.error('Error converting Delta to HTML', err);
           }
-        }, 300);
-      } else if (typeof docContent === 'string') {
-        setContent(docContent);
-        setHtmlContent(docContent);
+        } else if (typeof docContent === 'string') {
+          setContent(docContent);
+          setHtmlContent(docContent);
+        } else {
+          setContent('');
+          setHtmlContent('');
+        }
       } else {
-        setContent('');
-        setHtmlContent('');
+        // If document updated (e.g. after save), just update lastSaved
+        setLastSaved(currentDocument.updated_at);
       }
     } else {
+      currentDocIdRef.current = null;
       setTitle('');
       setContent('');
       setHtmlContent('');
@@ -152,7 +179,7 @@ function Editor() {
 
     // Set new timeout for auto-save
     saveTimeoutRef.current = setTimeout(() => {
-      handleSave(true);
+      if (handleSaveRef.current) handleSaveRef.current(true);
     }, autoSaveInterval * 1000);
 
     return () => {
@@ -160,22 +187,22 @@ function Editor() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [hasChanges, content, title, isViewMode, autoSaveInterval]);
+  }, [hasChanges, content, title, isViewMode, autoSaveInterval, isAutoSaveEnabled, currentDocument, canEdit]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        if (hasChanges && canEdit) {
-          handleSave();
+        if (handleSaveRef.current) {
+          handleSaveRef.current(false);
         }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [hasChanges, canEdit]);
+  }, []);
 
   // Cập nhật thẻ tiêu đề trình duyệt (Browser Tab Title)
   useEffect(() => {
@@ -204,13 +231,18 @@ function Editor() {
 
   const handleSave = async (isAutoSave = false) => {
     if (!currentDocument || !canEdit || isSaving) return;
+    
+    if (!isAutoSave && !hasChanges) {
+      success('Tài liệu đã được lưu');
+      return;
+    }
 
     setIsSaving(true);
 
     try {
       // Get content as Quill delta
-      let contentDelta = { ops: [] };
-      if (quillRef.current) {
+      let contentDelta = currentDocument.content || { ops: [] };
+      if (quillRef.current && !isViewMode) {
         const editor = quillRef.current.getEditor();
         contentDelta = editor.getContents();
       }
@@ -235,6 +267,10 @@ function Editor() {
 
     setIsSaving(false);
   };
+
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  }, [handleSave]);
 
   const handleCopyLink = () => {
     if (!currentProject || !currentDocument) return;
@@ -346,14 +382,21 @@ function Editor() {
       const docContent = currentDocument.content;
       setContent(docContent);
       if (typeof docContent === 'object' && docContent.ops) {
-        setTimeout(() => {
-          if (quillRef.current) {
-            const editor = quillRef.current.getEditor();
-            editor.setContents(docContent);
-            setHtmlContent(editor.root.innerHTML);
-          }
-        }, 300);
+        try {
+          const tempContainer = document.createElement('div');
+          tempContainer.style.display = 'none';
+          document.body.appendChild(tempContainer);
+          const tempQuill = new Quill(tempContainer, { readOnly: true });
+          tempQuill.setContents(docContent);
+          setHtmlContent(tempContainer.querySelector('.ql-editor').innerHTML);
+          document.body.removeChild(tempContainer);
+        } catch (err) {
+          console.error(err);
+        }
+      } else if (typeof docContent === 'string') {
+        setHtmlContent(docContent);
       }
+      setTitle(currentDocument.title || '');
     }
   };
 
@@ -432,19 +475,6 @@ function Editor() {
               dangerouslySetInnerHTML={{ __html: htmlContent || '<p class="text-slate-400">Tài liệu trống</p>' }}
             />
           </div>
-        </div>
-
-        {/* Hidden Quill for content conversion */}
-        <div style={{ position: 'absolute', left: '-9999px', visibility: 'hidden' }}>
-          {isQuillLoaded && (
-            <ReactQuill
-              ref={quillRef}
-              theme="snow"
-              value={content}
-              modules={{ toolbar: false }}
-              readOnly
-            />
-          )}
         </div>
       </div>
     );
