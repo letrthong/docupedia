@@ -1,0 +1,56 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+ 
+      - name: Build the Docker image
+        run: |
+          docker build -t docupedia:latest -f Dockerfile ubuntu-docupedia
+
+      - name: Run container
+        run: |
+          docker run -d --name docupedia_temp docupedia:latest
+      
+      - name: Copy index.html from container
+        run: |
+          mkdir -p ubuntu-docupedia/dist
+          docker cp kanban_temp:/app/dist/index.html ubuntu-docupedia/dist/index.html
+      
+      - name: Run unit tests
+        run: docker exec -w /app/src docupedia_temp python -m unittest discover -s unittest -p "test_*.py"
+
+      - name: Copy test reports from container
+        if: always()
+        run: docker cpdocupedia_temp:/app/test-reports ./test-reports || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unittest-results
+          path: test-reports/
+
+      - name: Stop and remove container
+        if: always()
+        run: |
+          docker rm -f kanban_temp
+
+      - name: Upload index.html as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: index-html
+          path: ubuntu-docupedia/dist/index.html
