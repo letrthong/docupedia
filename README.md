@@ -1,5 +1,5 @@
 # Guideline
-[https://telua.vn/docupedia/project/proj_1781401826824](https://telua.vn/docupedia/project/proj_1781401826824?projectId=proj_1781401826824&docId=doc_1781426715279)
+ https://telua.vn/docupedia/project/proj_1781401826824?projectId=proj_1781401826824&docId=doc_1781426715279
 
 # 📚 Docupedia (QuillFlow)
 
