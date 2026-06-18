@@ -56,7 +56,21 @@ def not_found(e):
     return "Not Found", 404
 
 # --- FRONTEND PROXY ROUTES ---
+@app.route('/home')
+def home():
+    # Lấy ngày giờ hiện tại của hệ thống
+    now = datetime.now()
+    
+    # Định dạng ngày tháng năm (Ví dụ: 18/06/2026)
+    current_date = now.strftime("%d/%m/%Y")
+    
+    # Định dạng giờ phút giây (Ví dụ: 16:37:56)
+    current_time = now.strftime("%H:%M:%S")
 
+    # Hàm render_template tự động tìm file trong thư mục 'templates'
+    # Truyền các biến current_date và current_time sang file HTML
+    return render_template('home.html', date=current_date, time=current_time)
+ 
 @app.route("/")
 def index_redirect_home():
     """Chuyển hướng gốc mặc định (bạn có thể chọn /docupedia hoặc /task)"""
@@ -66,6 +80,7 @@ def index_redirect_home():
 def index_redirect_login():
     """Chuyển hướng gốc mặc định (bạn có thể chọn /docupedia hoặc /task)"""
     return redirect("/docupedia")
+
 
 @app.route("/docupedia")
 @app.route("/docupedia/<path:path>")
