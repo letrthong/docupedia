@@ -5,7 +5,7 @@ import sys
 
 # Add src to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
+from datetime import datetime
 from config_doupedia import get_config_doupedia
 from uhes_restful_blueprint_doupedia import docupedia_bp, init_docupedia_db
 
