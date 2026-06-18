@@ -360,11 +360,28 @@ function TreeView() {
       ? [moveModal.node.id, ...getDescendantIds(moveModal.node.id)]
       : [];
     
-    Object.values(tree.nodes).forEach(n => {
-      if (n.type === 'folder' && !invalidTargetIds.includes(n.id)) {
-        options.push({ id: n.id, title: n.title });
-      }
-    });
+    const addChildrenToOptions = (childrenIds, level) => {
+      // Lấy danh sách các thư mục hợp lệ và sắp xếp theo bảng chữ cái
+      const folders = childrenIds
+        .map(id => tree.nodes[id])
+        .filter(n => n && n.type === 'folder' && !invalidTargetIds.includes(n.id))
+        .sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+
+      folders.forEach(n => {
+        // Tạo tiền tố thụt lề: \u00A0 là ký tự non-breaking space giúp giữ khoảng trắng trong thẻ <select>
+        const prefix = '\u00A0\u00A0'.repeat(level) + '↳ ';
+        options.push({ id: n.id, title: prefix + n.title });
+        
+        if (n.children && n.children.length > 0) {
+          addChildrenToOptions(n.children, level + 1);
+        }
+      });
+    };
+
+    if (tree.root?.children) {
+      addChildrenToOptions(tree.root.children, 1);
+    }
+
     return options;
   };
 

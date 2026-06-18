@@ -2,7 +2,7 @@
   "id": "doc_1780390775751",
   "type": "file",
   "title": "dsfsdfsd",
-  "parent_id": "root",
+  "parent_id": "folder_1781790060164",
   "content": {
     "ops": [
       {
@@ -13,5 +13,5 @@
   "created_by": "user_admin",
   "updated_by": "user_admin",
   "created_at": "2026-06-02T08:59:35.751651Z",
-  "updated_at": "2026-06-02T08:59:45.989808Z"
+  "updated_at": "2026-06-18T13:41:09.812093Z"
 }
