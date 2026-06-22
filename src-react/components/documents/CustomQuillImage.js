@@ -115,3 +115,106 @@ class CustomImage extends BaseImage {
 }
 
 Quill.register(CustomImage, true);
+
+// Mở rộng Video mặc định của Quill thành BlockEmbed dạng DIV container để chứa iframe + overlay (cho phép click để resize)
+const BlockEmbed = Quill.import('blots/block/embed');
+
+// Hàm chuyển đổi link YouTube watch sang link embed để tránh lỗi X-Frame-Options
+function ensureEmbedUrl(url) {
+  if (!url) return url;
+  let cleanUrl = url.trim();
+  
+  if (cleanUrl.includes('youtube.com/watch')) {
+    try {
+      const queryStr = cleanUrl.split('?')[1];
+      if (queryStr) {
+        const urlParams = new URLSearchParams(queryStr);
+        const videoId = urlParams.get('v');
+        if (videoId) {
+          return `https://www.youtube.com/embed/${videoId}`;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse YouTube URL in ensureEmbedUrl:', e);
+    }
+  } else if (cleanUrl.includes('youtu.be/')) {
+    try {
+      const videoId = cleanUrl.split('youtu.be/')[1]?.split('?')[0];
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+    } catch (e) {
+      console.error('Failed to parse youtu.be URL in ensureEmbedUrl:', e);
+    }
+  }
+  
+  return cleanUrl;
+}
+
+class CustomVideo extends BlockEmbed {
+  static create(value) {
+    const node = document.createElement('div');
+    node.className = 'ql-video-container';
+    node.setAttribute('contenteditable', 'false');
+
+    const iframe = document.createElement('iframe');
+    const BaseVideo = Quill.import('formats/video');
+    let src = BaseVideo && BaseVideo.sanitize ? BaseVideo.sanitize(value) : value;
+    src = ensureEmbedUrl(src);
+    iframe.setAttribute('src', src);
+    iframe.setAttribute('frameborder', '0');
+    iframe.setAttribute('allowfullscreen', 'true');
+    iframe.className = 'ql-video';
+
+    // Tạo lớp phủ trong suốt trên editor để nhận diện click chỉnh sửa kích thước
+    const overlay = document.createElement('div');
+    overlay.className = 'ql-video-overlay';
+
+    node.appendChild(iframe);
+    node.appendChild(overlay);
+    return node;
+  }
+
+  static value(node) {
+    const iframe = node.querySelector('iframe');
+    return iframe ? iframe.getAttribute('src') : '';
+  }
+
+  static formats(domNode) {
+    const iframe = domNode.querySelector('iframe');
+    if (!iframe) return {};
+    return ['height', 'width', 'style'].reduce(function(formats, attribute) {
+      if (iframe.hasAttribute(attribute)) {
+        formats[attribute] = iframe.getAttribute(attribute);
+      }
+      return formats;
+    }, {});
+  }
+
+  format(name, value) {
+    const iframe = this.domNode.querySelector('iframe');
+    if (!iframe) return;
+
+    if (['height', 'width', 'style'].indexOf(name) > -1) {
+      if (value) {
+        iframe.setAttribute(name, value);
+        // Đồng bộ kích thước lên container bên ngoài để hiển thị chuẩn
+        this.domNode.setAttribute(name, value);
+        if (name === 'style') {
+          this.domNode.setAttribute('style', value);
+        }
+      } else {
+        iframe.removeAttribute(name);
+        this.domNode.removeAttribute(name);
+      }
+    } else {
+      super.format(name, value);
+    }
+  }
+}
+
+CustomVideo.blotName = 'video';
+CustomVideo.tagName = 'DIV';
+CustomVideo.className = 'ql-video-container';
+
+Quill.register(CustomVideo, true);

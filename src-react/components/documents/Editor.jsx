@@ -78,6 +78,64 @@ function Editor() {
     };
   }, [error]);
 
+  // Custom handler khi click nút chọn video trên toolbar
+  const handleVideoUploadClick = useCallback(() => {
+    const editor = quillRef.current.getEditor();
+    const range = editor.getSelection();
+    const index = range ? range.index : editor.getLength();
+
+    const rawUrl = window.prompt("Nhập URL Video (ví dụ: link YouTube Embed hoặc link trực tiếp video):");
+    if (!rawUrl) return;
+
+    // Tự động chuyển đổi link YouTube thường sang link Embed để tránh lỗi X-Frame-Options của YouTube
+    let url = rawUrl.trim();
+    if (url.includes('youtube.com/watch')) {
+      try {
+        const queryStr = url.split('?')[1];
+        if (queryStr) {
+          const urlParams = new URLSearchParams(queryStr);
+          const videoId = urlParams.get('v');
+          if (videoId) {
+            url = `https://www.youtube.com/embed/${videoId}`;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse YouTube URL:', e);
+      }
+    } else if (url.includes('youtu.be/')) {
+      try {
+        const videoId = url.split('youtu.be/')[1]?.split('?')[0];
+        if (videoId) {
+          url = `https://www.youtube.com/embed/${videoId}`;
+        }
+      } catch (e) {
+        console.error('Failed to parse youtu.be URL:', e);
+      }
+    }
+
+    const width = window.prompt("Nhập chiều rộng video (ví dụ: 100% hoặc 640px):", "100%");
+    if (!width) return;
+
+    const height = window.prompt("Nhập chiều cao video (ví dụ: 450px hoặc 360px):", "450px");
+    if (!height) return;
+
+    try {
+      editor.insertEmbed(index, 'video', url);
+      
+      // Áp dụng định dạng kích thước (width, height, style) cho video vừa chèn
+      setTimeout(() => {
+        editor.formatText(index, 1, 'width', width);
+        editor.formatText(index, 1, 'height', height);
+        editor.formatText(index, 1, 'style', `max-width: 100%; width: ${width}; height: ${height}; border-radius: 8px;`);
+        setContent(editor.getContents());
+        setHasChanges(true);
+      }, 50);
+    } catch (err) {
+      console.error('Video insert failed:', err);
+      error('Không thể chèn video');
+    }
+  }, [error]);
+
   // Custom handler khi click nút tạo bảng trên toolbar
   const handleInsertTableClick = useCallback(() => {
     const editor = quillRef.current.getEditor();
@@ -251,7 +309,8 @@ function Editor() {
         ],
         handlers: {
           image: handleImageUploadClick,
-          table: handleInsertTableClick
+          table: handleInsertTableClick,
+          video: handleVideoUploadClick
         }
       },
       imageResize: {
@@ -259,7 +318,7 @@ function Editor() {
         modules: ['Resize', 'DisplaySize', 'Toolbar']
       }
     };
-  }, [handleImageUploadClick, handleInsertTableClick]);
+  }, [handleImageUploadClick, handleInsertTableClick, handleVideoUploadClick]);
 
   // Tự động bắt sự kiện paste/drop hình ảnh trong editor để nén sang WebP
   useEffect(() => {
@@ -466,6 +525,53 @@ function Editor() {
     };
   }, [isQuillLoaded, isViewMode]);
 
+  // Lắng nghe sự kiện click vào ql-video-overlay trong editor để mở hộp thoại cập nhật kích thước video
+  useEffect(() => {
+    if (!isQuillLoaded || !quillRef.current || !canEdit || isViewMode) return;
+
+    const editor = quillRef.current.getEditor();
+    const root = editor.root;
+
+    const handleOverlayClick = (e) => {
+      if (e.target.classList.contains('ql-video-overlay')) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const container = e.target.closest('.ql-video-container');
+        if (!container) return;
+
+        const iframe = container.querySelector('iframe');
+        if (!iframe) return;
+
+        const currentWidth = iframe.getAttribute('width') || '100%';
+        const currentHeight = iframe.getAttribute('height') || '450px';
+
+        const newWidth = window.prompt("Nhập chiều rộng mới cho video (ví dụ: 100% hoặc 640px):", currentWidth);
+        if (newWidth === null) return; // Nhấn Hủy
+
+        const newHeight = window.prompt("Nhập chiều cao mới cho video (ví dụ: 450px hoặc 360px):", currentHeight);
+        if (newHeight === null) return; // Nhấn Hủy
+
+        // Tìm blot của container video để lấy chỉ số (index) và cập nhật
+        const blot = Quill.find(container);
+        if (blot) {
+          const index = editor.getIndex(blot);
+          editor.formatText(index, 1, 'width', newWidth);
+          editor.formatText(index, 1, 'height', newHeight);
+          editor.formatText(index, 1, 'style', `max-width: 100%; width: ${newWidth}; height: ${newHeight}; border-radius: 8px;`);
+          
+          setContent(editor.getContents());
+          setHasChanges(true);
+        }
+      }
+    };
+
+    root.addEventListener('click', handleOverlayClick);
+    return () => {
+      root.removeEventListener('click', handleOverlayClick);
+    };
+  }, [isQuillLoaded, canEdit, isViewMode]);
+
   // Tải module ImageResize động để tránh lỗi circular dependency của Vite
   useEffect(() => {
     if (isImageResizeRegistered) {
@@ -487,6 +593,34 @@ function Editor() {
     });
     return () => { isMounted = false; };
   }, []);
+
+  // Đăng ký matcher cho clipboard để chuẩn hóa video iframe cũ thành video wrapper mới
+  useEffect(() => {
+    if (!isQuillLoaded || !quillRef.current) return;
+
+    const editor = quillRef.current.getEditor();
+    const clipboard = editor.getModule('clipboard');
+    if (clipboard && clipboard.addMatcher) {
+      clipboard.addMatcher('iframe.ql-video', (node, delta) => {
+        const src = node.getAttribute('src');
+        const width = node.getAttribute('width') || '100%';
+        const height = node.getAttribute('height') || '450px';
+        const style = node.getAttribute('style') || `max-width: 100%; width: ${width}; height: ${height}; border-radius: 8px;`;
+        
+        return {
+          ops: [{
+            insert: { video: src },
+            attributes: {
+              width: width,
+              height: height,
+              style: style
+            }
+          }]
+        };
+      });
+      console.log('[DEBUG] Registered custom clipboard matcher for iframe.ql-video');
+    }
+  }, [isQuillLoaded]);
 
   // Load document content - default to view mode
   useEffect(() => {

@@ -99,3 +99,44 @@ article.prose table, .ql-editor table {
   max-width: 100% !important;
   overflow-x: auto !important;
 }
+
+/* Video Embed Styles */
+.ql-video-container {
+  position: relative !important;
+  display: block !important;
+  margin: 16px auto !important;
+  max-width: 100% !important;
+}
+
+.ql-editor iframe.ql-video, article.prose iframe.ql-video {
+  display: block !important;
+  margin: 0 auto !important;
+  max-width: 100% !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Lớp phủ trong suốt nhận diện click và hover trên video ở chế độ soạn thảo */
+.ql-editor .ql-video-overlay {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  z-index: 5 !important;
+  border: 2px solid transparent !important;
+  transition: all 0.2s ease !important;
+  border-radius: 8px !important;
+}
+
+.ql-editor .ql-video-container:hover .ql-video-overlay {
+  background: rgba(16, 185, 129, 0.05) !important; /* màu xanh lá cây rất mờ */
+  border: 2px dashed #10b981 !important;
+}
+
+/* Ẩn hoàn toàn lớp phủ khi ở chế độ xem để cho phép người dùng click và play video bình thường */
+article.prose .ql-video-overlay {
+  display: none !important;
+}
