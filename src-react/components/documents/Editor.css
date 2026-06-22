@@ -1,0 +1,101 @@
+.docupedia-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.docupedia-editor .ql-container {
+  flex: 1;
+  overflow: auto;
+  font-size: 16px;
+}
+.docupedia-editor .ql-editor {
+  min-height: 100%;
+  padding: 24px;
+}
+.docupedia-editor .ql-toolbar {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+.dark .docupedia-editor .ql-toolbar {
+  border-color: #1e293b;
+  background: #0f172a;
+}
+.dark .docupedia-editor .ql-container {
+  border-color: #1e293b;
+  background: #0f172a;
+  color: #f1f5f9;
+}
+.dark .docupedia-editor .ql-editor.ql-blank::before {
+  color: #64748b;
+}
+.dark .docupedia-editor .ql-stroke {
+  stroke: #cbd5e1;
+}
+.dark .docupedia-editor .ql-fill {
+  fill: #cbd5e1;
+}
+.dark .docupedia-editor .ql-picker-label {
+  color: #cbd5e1;
+}
+.dark .docupedia-editor .ql-picker-options {
+  background: #1e293b;
+  border-color: #334155;
+}
+.dark .docupedia-editor .ql-picker-item {
+  color: #e2e8f0;
+}
+.dark .docupedia-editor .ql-picker-item:hover {
+  color: #f8fafc;
+  background: #334155;
+}
+
+/* Table styles in edit and preview modes */
+.docupedia-editor .ql-editor table, .docupedia-editor .ql-editor table.ql-table, article.prose table, article.prose table.ql-table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 16px 0 !important;
+  table-layout: auto !important;
+  border: 1px solid #cbd5e1 !important;
+}
+.dark .docupedia-editor .ql-editor table, .dark .docupedia-editor .ql-editor table.ql-table, .dark article.prose table, .dark article.prose table.ql-table {
+  border-color: #334155 !important;
+}
+.docupedia-editor .ql-editor td, .docupedia-editor .ql-editor td.ql-table-cell, .docupedia-editor .ql-editor th, article.prose td, article.prose td.ql-table-cell, article.prose th {
+  border: 1px solid #cbd5e1 !important;
+  padding: 10px 14px !important;
+  min-width: 60px !important;
+  height: auto !important;
+  vertical-align: top !important;
+}
+.dark .docupedia-editor .ql-editor td, .dark .docupedia-editor .ql-editor td.ql-table-cell, .dark .docupedia-editor .ql-editor th, .dark article.prose td, .dark article.prose td.ql-table-cell, .dark article.prose th {
+  border-color: #334155 !important;
+}
+.docupedia-editor .ql-editor th, article.prose th {
+  background-color: #f8fafc !important;
+  font-weight: 600 !important;
+}
+.dark .docupedia-editor .ql-editor th, .dark article.prose th {
+  background-color: #1e293b !important;
+}
+.docupedia-editor .ql-editor table:hover, .docupedia-editor .ql-editor table.ql-table:hover, article.prose table:hover, article.prose table.ql-table:hover {
+  border-color: #94a3b8 !important;
+}
+
+/* Fix cell paragraph margin within tables */
+.ql-editor .ql-table-cell-inner p, article.prose .ql-table-cell-inner p {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Scrollable wrapper and tables */
+.ql-table-wrapper, .ql-table-container {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  display: block !important;
+}
+
+article.prose table, .ql-editor table {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+}
