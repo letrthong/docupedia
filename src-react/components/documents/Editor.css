@@ -140,3 +140,25 @@ article.prose table, .ql-editor table {
 article.prose .ql-video-overlay {
   display: none !important;
 }
+
+/* Định dạng khối mã nguồn (Code Blocks - Atom One Dark style) */
+.ql-editor pre.ql-syntax, article.prose pre.ql-syntax {
+  background-color: #282c34 !important; /* Màu nền tối của Atom One Dark */
+  color: #abb2bf !important; /* Màu chữ xám bạc mặc định */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-size: 0.9em !important;
+  line-height: 1.5 !important;
+  padding: 16px !important;
+  border-radius: 8px !important;
+  overflow-x: auto !important;
+  margin: 16px 0 !important;
+  border: 1px solid #1e293b !important;
+}
+
+/* Đảm bảo màu chữ bên trong khối mã nguồn không bị ghi đè bởi Tailwind prose */
+article.prose pre.ql-syntax code {
+  color: inherit !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  font-size: inherit !important;
+}

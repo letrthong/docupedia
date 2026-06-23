@@ -6,7 +6,79 @@
   "content": {
     "ops": [
       {
-        "insert": "sssdsf\n\n"
+        "insert": "from flask import Flask, render_template"
+      },
+      {
+        "attributes": {
+          "code-block": true
+        },
+        "insert": "\n\n"
+      },
+      {
+        "insert": "app = Flask(__name__)"
+      },
+      {
+        "attributes": {
+          "code-block": true
+        },
+        "insert": "\n\n"
+      },
+      {
+        "insert": "@app.route('/<page_name>')"
+      },
+      {
+        "attributes": {
+          "code-block": true
+        },
+        "insert": "\n"
+      },
+      {
+        "insert": "def show_page(page_name):"
+      },
+      {
+        "attributes": {
+          "code-block": true
+        },
+        "insert": "\n"
+      },
+      {
+        "insert": "  # page_name có thể là \"index\", \"about\", \"contact\"..."
+      },
+      {
+        "attributes": {
+          "code-block": true
+        },
+        "insert": "\n"
+      },
+      {
+        "insert": "  template_path = page_name "
+      },
+      {
+        "attributes": {
+          "code-block": true
+        },
+        "insert": "\n\n"
+      },
+      {
+        "insert": "  # Đoạn code của bạn ở đây:"
+      },
+      {
+        "attributes": {
+          "code-block": true
+        },
+        "insert": "\n"
+      },
+      {
+        "insert": "  return render_template(f\"{template_path}.html\")"
+      },
+      {
+        "attributes": {
+          "code-block": true
+        },
+        "insert": "\n"
+      },
+      {
+        "insert": "\n\n"
       },
       {
         "attributes": {
@@ -14,6 +86,17 @@
             "tableId": "4083bvgptzy",
             "colId": "2qowu1dtuxb",
             "width": "493px",
+            "full": false
+          }
+        },
+        "insert": "\n"
+      },
+      {
+        "attributes": {
+          "col": {
+            "tableId": "4083bvgptzy",
+            "colId": "jsv1hgyo5s",
+            "width": "160px",
             "full": false
           }
         },
@@ -50,6 +133,18 @@
             "tableId": "4083bvgptzy",
             "rowId": "b0wmdksg7bu",
             "colId": "2qowu1dtuxb",
+            "rowspan": "1",
+            "colspan": "1"
+          }
+        },
+        "insert": "\n"
+      },
+      {
+        "attributes": {
+          "tableCellInner": {
+            "tableId": "4083bvgptzy",
+            "rowId": "b0wmdksg7bu",
+            "colId": "jsv1hgyo5s",
             "rowspan": "1",
             "colspan": "1"
           }
@@ -95,6 +190,18 @@
             "tableId": "4083bvgptzy",
             "rowId": "xflvz25eeac",
             "colId": "2qowu1dtuxb",
+            "rowspan": "1",
+            "colspan": "1"
+          }
+        },
+        "insert": "\n"
+      },
+      {
+        "attributes": {
+          "tableCellInner": {
+            "tableId": "4083bvgptzy",
+            "rowId": "xflvz25eeac",
+            "colId": "jsv1hgyo5s",
             "rowspan": "1",
             "colspan": "1"
           }
@@ -321,5 +428,5 @@
   "created_by": "user_admin",
   "updated_by": "user_admin",
   "created_at": "2026-06-02T08:59:35.751651Z",
-  "updated_at": "2026-06-22T13:05:42.289893Z"
+  "updated_at": "2026-06-23T01:40:49.904520Z"
 }

@@ -263,6 +263,7 @@ function Editor() {
   // Cấu hình modules của Quill (useMemo để tránh re-render liên tục và truyền handler tùy biến)
   const modules = useMemo(() => {
     return {
+      syntax: true, // Kích hoạt Highlight.js để tô màu cú pháp Code Block
       table: {
         fullWidth: true,
         dragResize: true,
