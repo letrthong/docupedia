@@ -76,13 +76,14 @@ Tài liệu mô tả kiến trúc tổng quan và thiết kế RESTful API cho h
 ### 2.2. Cấu trúc thư mục Frontend
 
 ```
-src/
+src-react/
 ├── main.jsx                 # Entry point
 ├── App.jsx                  # Root component + Router
-├── index.css                # Tailwind imports
+├── index.css                # Custom CSS styling
 │
 ├── api/
 │   ├── client.js            # Axios instance + interceptors
+│   ├── index.js             # API entry exporting all modules
 │   ├── auth.js              # Auth API calls
 │   ├── users.js             # User management API
 │   ├── projects.js          # Project API
@@ -90,65 +91,41 @@ src/
 │   └── permissions.js       # Permission API
 │
 ├── contexts/
-│   ├── AuthContext.jsx      # Authentication state
-│   ├── ProjectContext.jsx   # Current project state
-│   └── ThemeContext.jsx     # Dark/Light mode
-│
-├── hooks/
-│   ├── useAuth.js           # Auth hook
-│   ├── useProject.js        # Project operations hook
-│   ├── useDocuments.js      # Document CRUD hook
-│   └── usePermissions.js    # Permission check hook
+│   ├── index.js             # Re-exports provider and custom hooks
+│   ├── AuthContext.jsx      # Authentication state & useAuth hook
+│   ├── ProjectContext.jsx   # Current project state & useProject hook
+│   ├── ThemeContext.jsx     # Dark/Light mode & useTheme hook
+│   └── ToastContext.jsx     # Toast notification & useToast hook
 │
 ├── components/
-│   ├── common/
+│   ├── index.js
+│   ├── common/              # Reusable common elements
 │   │   ├── Button.jsx
 │   │   ├── Input.jsx
 │   │   ├── Modal.jsx
-│   │   ├── Toast.jsx
-│   │   ├── Loading.jsx
-│   │   └── ProtectedRoute.jsx
-│   │
-│   ├── layout/
+│   │   └── Toast.jsx
+│   ├── layout/              # Layout structural components
 │   │   ├── Header.jsx
 │   │   ├── Sidebar.jsx
-│   │   ├── MainLayout.jsx
-│   │   └── AuthLayout.jsx
-│   │
-│   ├── auth/
-│   │   ├── LoginForm.jsx
-│   │   └── ChangePasswordForm.jsx
-│   │
-│   ├── projects/
-│   │   ├── ProjectList.jsx
-│   │   ├── ProjectCard.jsx
-│   │   ├── ProjectForm.jsx
-│   │   └── ProjectPermissions.jsx
-│   │
-│   ├── users/
-│   │   ├── UserList.jsx
-│   │   ├── UserForm.jsx
-│   │   └── UserRoleBadge.jsx
-│   │
-│   ├── documents/
-│   │   ├── DocumentTree.jsx
-│   │   ├── TreeNode.jsx
-│   │   ├── DocumentEditor.jsx
-│   │   ├── DocumentViewer.jsx
-│   │   └── DocumentStats.jsx
-│   │
-│   └── editor/
-│       ├── QuillEditor.jsx
-│       ├── EditorToolbar.jsx
-│       └── ExportMenu.jsx
+│   │   └── MainLayout.jsx
+│   └── documents/           # Document workspace & Editor components
+│       ├── TreeView.jsx     # Document sidebar tree hierarchy UI
+│       ├── Editor.jsx       # Document editor component (Quill integration)
+│       ├── Editor.css       # Core styles for status bar, code block copy, etc.
+│       ├── IconPicker.jsx   # Popover picker for document emojis
+│       ├── TableTools.jsx   # Inline toolbar buttons for table insertion & management
+│       ├── CustomQuillImage.js # Custom module for resizing/uploading images
+│       └── editorUtils.js   # Image compression and other editor utility functions
 │
-└── pages/
+└── pages/                   # Main page layout views
     ├── LoginPage.jsx
-    ├── DashboardPage.jsx     # Project list
-    ├── ProjectPage.jsx       # Document workspace
-    ├── UsersPage.jsx         # Admin: User management
-    ├── SettingsPage.jsx      # User settings
-    └── NotFoundPage.jsx
+    ├── DashboardPage.jsx
+    ├── ProjectPage.jsx
+    ├── ProjectsManagePage.jsx
+    ├── UsersPage.jsx
+    ├── NewProjectPage.jsx
+    ├── SettingsPage.jsx
+    └── index.js
 ```
 
 ### 2.3. Routing Structure
