@@ -42,6 +42,8 @@ function Editor() {
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [emojiSelection, setEmojiSelection] = useState(null);
   const emojiButtonRef = useRef(null);
+  const [wordCount, setWordCount] = useState(0);
+  const [charCount, setCharCount] = useState(0);
   
   const currentDocIdRef = useRef(null);
   const quillRef = useRef(null);
@@ -295,6 +297,26 @@ function Editor() {
     setIsEmojiPickerOpen(false);
   }, [emojiSelection]);
 
+  // Custom handler khi click nút date trên toolbar
+  const handleDateInsertClick = useCallback(() => {
+    if (!quillRef.current) return;
+    const editor = quillRef.current.getEditor();
+    editor.focus();
+    const range = editor.getSelection();
+    const index = range ? range.index : editor.getLength();
+    
+    const today = new Date();
+    const dateString = today.toLocaleDateString('vi-VN');
+    const timeString = today.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const dateTimeString = `${timeString} ${dateString}`;
+    
+    editor.insertText(index, dateTimeString);
+    editor.setSelection(index + dateTimeString.length);
+    
+    setContent(editor.getContents());
+    setHasChanges(true);
+  }, []);
+
   // Cấu hình modules của Quill (useMemo để tránh re-render liên tục và truyền handler tùy biến)
   const modules = useMemo(() => {
     return {
@@ -339,7 +361,7 @@ function Editor() {
           [{ 'indent': '-1' }, { 'indent': '+1' }],
           [{ 'align': [] }],
           ['link', 'image', 'video'],
-          ['table', 'emoji'], // Thêm nút bảng và emoji vào toolbar
+          ['table', 'emoji', 'date'], // Thêm nút bảng, emoji và date vào toolbar
           ['blockquote', 'code-block'],
           ['clean'],
         ],
@@ -347,7 +369,8 @@ function Editor() {
           image: handleImageUploadClick,
           table: handleInsertTableClick,
           video: handleVideoUploadClick,
-          emoji: handleEmojiToolbarClick
+          emoji: handleEmojiToolbarClick,
+          date: handleDateInsertClick
         }
       },
       imageResize: {
@@ -355,24 +378,86 @@ function Editor() {
         modules: ['Resize', 'DisplaySize', 'Toolbar']
       }
     };
-  }, [handleImageUploadClick, handleInsertTableClick, handleVideoUploadClick, handleEmojiToolbarClick]);
+  }, [handleImageUploadClick, handleInsertTableClick, handleVideoUploadClick, handleEmojiToolbarClick, handleDateInsertClick]);
 
-  // Inject icon cho nút emoji trên toolbar
+  // Inject icon cho nút emoji và date trên toolbar
   useEffect(() => {
     if (!isQuillLoaded || isViewMode) return;
 
-    const injectEmojiIcon = () => {
+    const injectCustomIcons = () => {
       const emojiBtn = document.querySelector('.ql-emoji');
       if (emojiBtn && !emojiBtn.querySelector('svg')) {
         emojiBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>`;
         emojiBtn.title = "Chèn biểu tượng cảm xúc / đặc biệt (Emoji & Icons)";
       }
+
+      const dateBtn = document.querySelector('.ql-date');
+      if (dateBtn && !dateBtn.querySelector('svg')) {
+        dateBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
+        dateBtn.title = "Chèn ngày giờ hiện tại";
+      }
     };
 
-    injectEmojiIcon();
-    const timer = setTimeout(injectEmojiIcon, 200);
+    injectCustomIcons();
+    const timer = setTimeout(injectCustomIcons, 200);
 
     return () => clearTimeout(timer);
+  }, [isQuillLoaded, isViewMode]);
+
+  // Cập nhật số từ và số ký tự khi khởi động hoặc thay đổi nội dung
+  useEffect(() => {
+    if (!isQuillLoaded || !quillRef.current || isViewMode) return;
+    const editor = quillRef.current.getEditor();
+    const text = editor.getText() || '';
+    const cleanText = text.replace(/\n$/, '');
+    setCharCount(cleanText.length);
+    setWordCount(cleanText.trim() === '' ? 0 : cleanText.trim().split(/\s+/).length);
+  }, [isQuillLoaded, isViewMode, content]);
+
+  // Xử lý phím tắt gõ văn bản mở rộng (text expansion) như /today, /now, /time
+  useEffect(() => {
+    if (!isQuillLoaded || !quillRef.current || isViewMode) return;
+
+    const editor = quillRef.current.getEditor();
+
+    const handleTextChangeForShortcuts = (delta, oldDelta, source) => {
+      if (source !== 'user') return;
+      
+      const selection = editor.getSelection();
+      if (!selection) return;
+      
+      const index = selection.index;
+      const textBefore = editor.getText(Math.max(0, index - 10), 10);
+      
+      const today = new Date();
+      const dateString = today.toLocaleDateString('vi-VN');
+      const timeString = today.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      const secTimeString = today.toLocaleTimeString('vi-VN');
+      const dateTimeString = `${timeString} ${dateString}`;
+      
+      if (textBefore.endsWith('/today') || textBefore.endsWith('/date')) {
+        const replaceLen = textBefore.endsWith('/today') ? 6 : 5;
+        editor.deleteText(index - replaceLen, replaceLen);
+        editor.insertText(index - replaceLen, dateString);
+        setContent(editor.getContents());
+        setHasChanges(true);
+      } else if (textBefore.endsWith('/now')) {
+        editor.deleteText(index - 4, 4);
+        editor.insertText(index - 4, dateTimeString);
+        setContent(editor.getContents());
+        setHasChanges(true);
+      } else if (textBefore.endsWith('/time')) {
+        editor.deleteText(index - 5, 5);
+        editor.insertText(index - 5, secTimeString);
+        setContent(editor.getContents());
+        setHasChanges(true);
+      }
+    };
+
+    editor.on('text-change', handleTextChangeForShortcuts);
+    return () => {
+      editor.off('text-change', handleTextChangeForShortcuts);
+    };
   }, [isQuillLoaded, isViewMode]);
 
   // Tự động bắt sự kiện paste/drop hình ảnh trong editor để nén sang WebP
@@ -1213,31 +1298,47 @@ function Editor() {
       {isInTable && <TableTools onTableOp={handleTableOp} />}
 
       {/* Editor */}
-      <div className="flex-1 overflow-hidden bg-white dark:bg-slate-900 relative">
-        {!isQuillLoaded ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-          </div>
-        ) : (
-          <>
-            <ReactQuill
-              ref={quillRef}
-              theme="snow"
-              value={content}
-              onChange={handleContentChange}
-              modules={modules}
-              readOnly={!canEdit}
-              className="h-full docupedia-editor"
-              placeholder="Bắt đầu viết..."
-            />
-            {isEmojiPickerOpen && (
-              <IconPicker
-                onSelect={handleEmojiSelect}
-                onClose={() => setIsEmojiPickerOpen(false)}
-                buttonRef={emojiButtonRef}
+      <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-slate-900">
+        <div className="flex-1 overflow-hidden relative">
+          {!isQuillLoaded ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+            </div>
+          ) : (
+            <>
+              <ReactQuill
+                ref={quillRef}
+                theme="snow"
+                value={content}
+                onChange={handleContentChange}
+                modules={modules}
+                readOnly={!canEdit}
+                className="h-full docupedia-editor"
+                placeholder="Bắt đầu viết..."
               />
-            )}
-          </>
+              {isEmojiPickerOpen && (
+                <IconPicker
+                  onSelect={handleEmojiSelect}
+                  onClose={() => setIsEmojiPickerOpen(false)}
+                  buttonRef={emojiButtonRef}
+                />
+              )}
+            </>
+          )}
+        </div>
+        
+        {/* Status Bar */}
+        {isQuillLoaded && (
+          <div className="docupedia-status-bar flex items-center justify-between px-4 py-1.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-4">
+              <span>Số từ: <strong>{wordCount}</strong></span>
+              <span className="w-1 h-1 bg-slate-300 dark:bg-slate-700 rounded-full"></span>
+              <span>Số ký tự: <strong>{charCount}</strong></span>
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5">
+              <span>Mẹo chèn nhanh: <code>/today</code>, <code>/now</code>, <code>/time</code></span>
+            </div>
+          </div>
         )}
       </div>
     </div>

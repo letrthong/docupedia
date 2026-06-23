@@ -163,33 +163,43 @@ article.prose pre.ql-syntax code {
   font-size: inherit !important;
 }
 
-/* Custom ql-emoji toolbar button styling */
+/* Custom ql-emoji and ql-date toolbar button styling */
 .ql-snow.ql-toolbar button.ql-emoji,
-.ql-snow .ql-toolbar button.ql-emoji {
+.ql-snow.ql-toolbar button.ql-date,
+.ql-snow .ql-toolbar button.ql-emoji,
+.ql-snow .ql-toolbar button.ql-date {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
 }
 
 .ql-snow.ql-toolbar button.ql-emoji svg,
-.ql-snow .ql-toolbar button.ql-emoji svg {
+.ql-snow.ql-toolbar button.ql-date svg,
+.ql-snow .ql-toolbar button.ql-emoji svg,
+.ql-snow .ql-toolbar button.ql-date svg {
   stroke: #64748b;
   transition: stroke 0.15s ease, transform 0.15s ease;
 }
 
 .ql-snow.ql-toolbar button.ql-emoji:hover svg,
-.ql-snow .ql-toolbar button.ql-emoji:hover svg {
+.ql-snow.ql-toolbar button.ql-date:hover svg,
+.ql-snow .ql-toolbar button.ql-emoji:hover svg,
+.ql-snow .ql-toolbar button.ql-date:hover svg {
   stroke: #10b981; /* emerald-600 */
   transform: scale(1.1);
 }
 
 .dark .ql-snow.ql-toolbar button.ql-emoji svg,
-.dark .ql-snow .ql-toolbar button.ql-emoji svg {
+.dark .ql-snow.ql-toolbar button.ql-date svg,
+.dark .ql-snow .ql-toolbar button.ql-emoji svg,
+.dark .ql-snow .ql-toolbar button.ql-date svg {
   stroke: #cbd5e1;
 }
 
 .dark .ql-snow.ql-toolbar button.ql-emoji:hover svg,
-.dark .ql-snow .ql-toolbar button.ql-emoji:hover svg {
+.dark .ql-snow.ql-toolbar button.ql-date:hover svg,
+.dark .ql-snow .ql-toolbar button.ql-emoji:hover svg,
+.dark .ql-snow .ql-toolbar button.ql-date:hover svg {
   stroke: #34d399; /* emerald-400 */
 }
 
@@ -200,4 +210,22 @@ article.prose pre.ql-syntax code {
 .scrollbar-none {
   -ms-overflow-style: none !important;  /* IE and Edge */
   scrollbar-width: none !important;  /* Firefox */
+}
+
+/* Định dạng thanh trạng thái (Status Bar) */
+.docupedia-status-bar {
+  user-select: none;
+}
+
+.docupedia-status-bar code {
+  background-color: #e2e8f0;
+  color: #0f172a;
+  padding: 1.5px 3.5px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.dark .docupedia-status-bar code {
+  background-color: #1e293b;
+  color: #cbd5e1;
 }
