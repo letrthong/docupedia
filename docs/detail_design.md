@@ -2384,151 +2384,239 @@ export default function MainLayout({ children }) {
 }
 ```
 
-### `src/components/documents/DocumentTree.jsx`
+### `src-react/components/documents/TreeView.jsx`
+
+TreeView quản lý danh sách cây thư mục tài liệu của dự án với khả năng tìm kiếm đệ quy, sắp xếp thư mục trước tệp tin, và menu chức năng (Tài liệu mới, Thư mục mới, Đổi tên, Di chuyển, Xóa).
 
 ```jsx
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  ChevronRight, 
+  ChevronDown, 
+  FileText, 
+  Folder, 
+  FolderOpen,
+  MoreHorizontal,
+  Trash2,
+  Edit2
+} from 'lucide-react';
 import { useProject } from '../../contexts/ProjectContext';
-import TreeNode from './TreeNode';
-import { FolderPlus, FilePlus } from 'lucide-react';
 
-export default function DocumentTree() {
-  const { tree, currentDocument, loadDocument, canCreate } = useProject();
-  const [expandedFolders, setExpandedFolders] = useState(['root']);
+// Sắp xếp: Thư mục trước, tài liệu sau, xếp theo thứ tự chữ cái
+const sortNodes = (a, b) => {
+  if (a.type === 'folder' && b.type !== 'folder') return -1;
+  if (a.type !== 'folder' && b.type === 'folder') return 1;
+  return (a.title || '').localeCompare(b.title || '');
+};
 
-  const toggleFolder = (folderId) => {
-    setExpandedFolders(prev => 
-      prev.includes(folderId) 
-        ? prev.filter(id => id !== folderId)
-        : [...prev, folderId]
-    );
+function TreeNode({ 
+  node, 
+  level = 0, 
+  onSelectDocument, 
+  selectedId,
+  nodes,
+  onCreateDocument,
+  onCreateFolder,
+  onDelete,
+  onRename,
+  onMove,
+  canCreate,
+  canEdit,
+  canDelete,
+  searchTerm
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const [showMenu, setShowMenu] = useState(false);
+
+  useEffect(() => {
+    if (searchTerm) {
+      setExpanded(true);
+    }
+  }, [searchTerm]);
+  
+  const isFolder = node.type === 'folder';
+  const isSelected = node.id === selectedId;
+  const children = node.children?.map(id => nodes[id]).filter(Boolean).sort(sortNodes) || [];
+
+  const handleClick = () => {
+    if (isFolder) {
+      setExpanded(!expanded);
+    } else {
+      onSelectDocument(node.id);
+    }
   };
 
-  if (!tree) {
-    return <div className="p-4 text-slate-500">Đang tải...</div>;
-  }
-
-  const renderNodes = (nodeIds, depth = 0) => {
-    return nodeIds.map(nodeId => {
-      const node = tree.nodes[nodeId] || 
-        (nodeId === 'root' ? tree.root : null);
-      
-      if (!node) return null;
-
-      const isExpanded = expandedFolders.includes(nodeId);
-      const isActive = currentDocument?.id === nodeId;
-
-      return (
-        <TreeNode
-          key={nodeId}
-          node={node}
-          depth={depth}
-          isExpanded={isExpanded}
-          isActive={isActive}
-          onToggle={() => toggleFolder(nodeId)}
-          onClick={() => node.type === 'file' && loadDocument(nodeId)}
-        >
-          {node.type === 'folder' && isExpanded && node.children?.length > 0 && (
-            <div className="ml-4">
-              {renderNodes(node.children, depth + 1)}
-            </div>
-          )}
-        </TreeNode>
-      );
-    });
+  const checkMatch = (n, term) => {
+    if (!term) return true;
+    if (n.title.toLowerCase().includes(term.toLowerCase())) return true;
+    if (n.children) {
+      return n.children.some(childId => {
+        const childNode = nodes[childId];
+        return childNode && checkMatch(childNode, term);
+      });
+    }
+    return false;
   };
+
+  const filteredChildren = children.filter(child => checkMatch(child, searchTerm));
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Actions */}
-      {canCreate && (
-        <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex gap-2">
-          <button className="flex-1 flex items-center justify-center gap-1 py-2 px-3 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-100">
-            <FilePlus size={16} />
-            Tài liệu
-          </button>
-          <button className="flex-1 flex items-center justify-center gap-1 py-2 px-3 bg-amber-50 text-amber-600 rounded-lg text-sm font-medium hover:bg-amber-100">
-            <FolderPlus size={16} />
-            Thư mục
-          </button>
-        </div>
-      )}
+    <div>
+      <div
+        className={`group flex items-center gap-2 py-2 px-2 rounded-lg cursor-pointer text-sm transition-all ${
+          isSelected
+            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-medium'
+            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
+        }`}
+        style={{ paddingLeft: `${level * 16 + 8}px` }}
+        onClick={handleClick}
+      >
+        {isFolder && (
+          <span className="w-4 h-4 flex items-center justify-center text-slate-400">
+            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </span>
+        )}
+        {!isFolder && <span className="w-4" />}
 
-      {/* Tree */}
-      <div className="flex-1 overflow-y-auto p-3">
-        {renderNodes(tree.root.children)}
-        
-        {tree.root.children.length === 0 && (
-          <div className="text-center py-8 text-slate-400">
-            <p>Chưa có tài liệu nào</p>
+        {isFolder ? (
+          expanded ? (
+            <FolderOpen className="w-5 h-5 text-amber-500 flex-shrink-0" />
+          ) : (
+            <Folder className="w-5 h-5 text-amber-500 flex-shrink-0" />
+          )
+        ) : (
+          <FileText className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+        )}
+
+        <span className="flex-1 truncate">{node.title}</span>
+
+        {/* Nút hành động nổi trên hover */}
+        {(canCreate || canEdit || canDelete) && (
+          <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(!showMenu);
+              }}
+              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition"
+            >
+              <MoreHorizontal className="w-4 h-4 text-slate-400" />
+            </button>
+            {/* Popover action list */}
           </div>
         )}
       </div>
+      {isFolder && expanded && filteredChildren.length > 0 && (
+        <div>
+          {filteredChildren.map(child => (
+            <TreeNode ... />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 ```
 
-### `src/components/editor/QuillEditor.jsx`
+### `src-react/components/documents/Editor.jsx`
+
+Editor là thành phần cốt lõi hiển thị trình soạn thảo Quill với các tính năng nâng cao:
+1. **Chế độ Xem / Soạn thảo (View/Edit Mode)**: Mặc định ở chế độ Xem chỉ đọc. Khi click "Chỉnh sửa", chế độ Soạn thảo kích hoạt.
+2. **Auto-save**: Tự động lưu sau mỗi 3 giây (hoặc cấu hình tùy chọn) với chỉ báo trạng thái lưu.
+3. **Bộ chèn ảnh/video tùy biến**: Image nén định dạng WebP bằng helper trong `editorUtils.js`, video tự động chuyển đổi URL YouTube dạng nhúng (Embed).
+4. **Hỗ trợ Bảng**: Sử dụng Quill table module và tích hợp [TableTools](file:///d:/code/docupedia/src-react/components/documents/TableTools.jsx) để chèn hoặc chỉnh sửa dòng/cột.
+5. **Chèn Emoji/Icon**: Tích hợp [IconPicker](file:///d:/code/docupedia/src-react/components/documents/IconPicker.jsx) từ toolbar tùy chỉnh.
+6. **Thanh trạng thái (Status Bar)**: Thống kê số từ, số ký tự theo thời gian thực và hiển thị mẹo phím tắt nhanh.
+7. **Phím tắt mở rộng (Text Expansion)**: Lắng nghe sự kiện `'text-change'` để tự động thay thế khi gõ:
+   - `/today` hoặc `/date` → hiển thị ngày hiện tại (ví dụ: `23/06/2026`).
+   - `/now` → hiển thị ngày và giờ hiện tại (ví dụ: `22:42 23/06/2026`).
+   - `/time` → hiển thị giờ giây hiện tại (ví dụ: `22:42:15`).
+8. **Nút Copy mã nguồn nổi**: Tự động quét và chèn nút Sao chép nổi vào mỗi khối `<pre class="ql-syntax">` khi người dùng xem tài liệu. Khi nhấn, sao chép code thô vào Clipboard kèm hiệu ứng checkmark thành công.
+9. **Định dạng liên kết**: CSS áp dụng màu xanh nước biển `#2563eb` (`#60a5fa` ở dark mode), in nghiêng và gạch chân chuẩn web cho thẻ `a`.
 
 ```jsx
-import { useRef, useEffect, useCallback } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+// Cấu trúc lắng nghe phím tắt text expansion trong Editor.jsx
+useEffect(() => {
+  if (!isQuillLoaded || !quillRef.current || isViewMode) return;
 
-const modules = {
-  toolbar: [
-    [{ header: [1, 2, 3, false] }],
-    ['bold', 'italic', 'underline', 'strike'],
-    [{ color: [] }, { background: [] }],
-    [{ align: [] }],
-    [{ list: 'ordered' }, { list: 'bullet' }],
-    ['blockquote', 'code-block'],
-    ['link', 'image'],
-    ['clean'],
-  ],
-  clipboard: {
-    matchVisual: false,
-  },
-};
+  const editor = quillRef.current.getEditor();
 
-const formats = [
-  'header',
-  'bold', 'italic', 'underline', 'strike',
-  'color', 'background',
-  'align',
-  'list', 'bullet',
-  'blockquote', 'code-block',
-  'link', 'image',
-];
-
-export default function QuillEditor({ 
-  value, 
-  onChange, 
-  readOnly = false,
-  placeholder = 'Bắt đầu viết...' 
-}) {
-  const quillRef = useRef(null);
-
-  const handleChange = useCallback((content, delta, source, editor) => {
-    if (source === 'user') {
-      onChange(editor.getContents());
+  const handleTextChangeForShortcuts = (delta, oldDelta, source) => {
+    if (source !== 'user') return;
+    
+    const selection = editor.getSelection();
+    if (!selection) return;
+    
+    const index = selection.index;
+    const textBefore = editor.getText(Math.max(0, index - 10), 10);
+    
+    const today = new Date();
+    const dateString = today.toLocaleDateString('vi-VN');
+    const timeString = today.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const secTimeString = today.toLocaleTimeString('vi-VN');
+    const dateTimeString = `${timeString} ${dateString}`;
+    
+    if (textBefore.endsWith('/today') || textBefore.endsWith('/date')) {
+      const replaceLen = textBefore.endsWith('/today') ? 6 : 5;
+      editor.deleteText(index - replaceLen, replaceLen);
+      editor.insertText(index - replaceLen, dateString);
+      setContent(editor.getContents());
+      setHasChanges(true);
+    } else if (textBefore.endsWith('/now')) {
+      editor.deleteText(index - 4, 4);
+      editor.insertText(index - 4, dateTimeString);
+      setContent(editor.getContents());
+      setHasChanges(true);
+    } else if (textBefore.endsWith('/time')) {
+      editor.deleteText(index - 5, 5);
+      editor.insertText(index - 5, secTimeString);
+      setContent(editor.getContents());
+      setHasChanges(true);
     }
-  }, [onChange]);
+  };
 
+  editor.on('text-change', handleTextChangeForShortcuts);
+  return () => {
+    editor.off('text-change', handleTextChangeForShortcuts);
+  };
+}, [isQuillLoaded, isViewMode]);
+```
+
+### `src-react/components/documents/IconPicker.jsx`
+
+Thành phần hiển thị popover chọn emoji/icon cho tiêu đề tài liệu. Hỗ trợ phân mục theo tab, thanh tìm kiếm nhanh theo từ khóa, và cuộn mượt bằng bàn phím/rê chuột.
+
+```jsx
+import { useState, useMemo, useRef, useEffect } from 'react';
+
+export default function IconPicker({ onSelect, onClose, buttonRef }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('smileys');
+  
+  // Danh sách emoji đã phân loại kèm keyword tìm kiếm
+  const categories = {
+    smileys: { label: 'Mặt cười', emojis: [...] },
+    animals: { label: 'Động vật', emojis: [...] },
+    food: { label: 'Đồ ăn', emojis: [...] },
+    activities: { label: 'Thể thao', emojis: [...] },
+    travel: { label: 'Du lịch', emojis: [...] },
+    objects: { label: 'Đồ vật', emojis: [...] },
+    symbols: { label: 'Ký hiệu', emojis: [...] }
+  };
+  
+  // Logic tìm kiếm emoji theo tên/từ khóa tiếng Việt & tiếng Anh
+  const filteredEmojis = useMemo(() => {
+    if (!searchTerm) return categories[activeTab].emojis;
+    // Tìm kiếm trong toàn bộ các phân mục
+    ...
+  }, [searchTerm, activeTab]);
+  
   return (
-    <div className="quill-wrapper h-full">
-      <ReactQuill
-        ref={quillRef}
-        theme="snow"
-        value={value}
-        onChange={handleChange}
-        modules={modules}
-        formats={formats}
-        readOnly={readOnly}
-        placeholder={placeholder}
-        className="h-full"
-      />
+    <div className="absolute bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 w-76 p-3">
+      {/* Search Input */}
+      {/* Tabs list (horizontal scrolling scrollbar-none) */}
+      {/* Emojis Grid display */}
     </div>
   );
 }

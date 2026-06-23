@@ -1,5 +1,15 @@
 # Phân tích cấu trúc giao diện QuillFlow (index.html)
 
+> [!WARNING]
+> **TÀI LIỆU LỊCH SỬ (LEGACY DOCUMENT)**
+> Tài liệu này mô tả cấu trúc giao diện của bản mẫu (prototype) tĩnh HTML/JS ban đầu (QuillFlow). 
+> Hiện tại, hệ thống đã được nâng cấp và chuyển đổi hoàn toàn sang kiến trúc Single-Page Application (SPA) viết bằng **React 18 + Vite** ở thư mục [src-react/](file:///d:/code/docupedia/src-react). 
+>
+> Để xem tài liệu thiết kế mới, vui lòng tham khảo:
+> - [README.md](file:///d:/code/docupedia/docs/README.md)
+> - [Kiến trúc Hệ thống (architecture.md)](file:///d:/code/docupedia/docs/architecture.md)
+> - [Chi tiết Thiết kế Kỹ thuật (detail_design.md)](file:///d:/code/docupedia/docs/detail_design.md)
+
 Tài liệu này cung cấp cái nhìn tổng quan và phân tích chi tiết về cấu trúc của tệp `index.html` thuộc dự án QuillFlow (Docupedia).
 
 ## 1. Tổng quan

@@ -1,5 +1,15 @@
 # Phân tích thư mục `js` và Logic ứng dụng (app.js)
 
+> [!WARNING]
+> **TÀI LIỆU LỊCH SỬ (LEGACY DOCUMENT)**
+> Tài liệu này mô tả logic JavaScript nguyên khối của bản mẫu (prototype) tĩnh ban đầu. 
+> Hiện tại, hệ thống đã được chuyển đổi hoàn toàn sang kiến trúc Single-Page Application (SPA) viết bằng **React 18 + Vite** ở thư mục [src-react/](file:///d:/code/docupedia/src-react). Các tệp JS cũ trong thư mục `js/` không còn được sử dụng.
+>
+> Để xem tài liệu thiết kế mới, vui lòng tham khảo:
+> - [README.md](file:///d:/code/docupedia/docs/README.md)
+> - [Kiến trúc Hệ thống (architecture.md)](file:///d:/code/docupedia/docs/architecture.md)
+> - [Chi tiết Thiết kế Kỹ thuật (detail_design.md)](file:///d:/code/docupedia/docs/detail_design.md)
+
 Thư mục `js` hiện tại chứa tệp `app.js`, đóng vai trò là "bộ não" điều khiển toàn bộ tương tác, trạng thái và dữ liệu của ứng dụng QuillFlow. Dưới đây là phân tích chi tiết về cấu trúc và luồng hoạt động của tệp này.
 
 ## 1. Tổng quan kiến trúc
