@@ -460,6 +460,55 @@ function Editor() {
     };
   }, [isQuillLoaded, isViewMode]);
 
+  // Thêm nút Copy vào các khối mã nguồn (code blocks) ở chế độ xem
+  useEffect(() => {
+    if (!isViewMode || !htmlContent) return;
+
+    const article = document.querySelector('article.prose');
+    if (!article) return;
+
+    const codeBlocks = article.querySelectorAll('pre.ql-syntax');
+    codeBlocks.forEach((block) => {
+      if (block.querySelector('.copy-code-btn')) return;
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-code-btn';
+      copyBtn.type = 'button';
+      copyBtn.title = 'Sao chép mã nguồn';
+      const copyIcon = `<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+      const checkIcon = `<svg viewBox="0 0 24 24" width="14" height="14" stroke="#34d399" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+      copyBtn.innerHTML = copyIcon;
+
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        const clone = block.cloneNode(true);
+        const btnInClone = clone.querySelector('.copy-code-btn');
+        if (btnInClone) btnInClone.remove();
+        const codeText = clone.textContent || '';
+
+        navigator.clipboard.writeText(codeText)
+          .then(() => {
+            copyBtn.innerHTML = checkIcon;
+            copyBtn.title = 'Đã sao chép!';
+            copyBtn.style.borderColor = '#34d399';
+            
+            setTimeout(() => {
+              copyBtn.innerHTML = copyIcon;
+              copyBtn.title = 'Sao chép mã nguồn';
+              copyBtn.style.borderColor = '';
+            }, 2000);
+          })
+          .catch((err) => {
+            console.error('Lỗi khi sao chép:', err);
+          });
+      });
+
+      block.appendChild(copyBtn);
+    });
+  }, [isViewMode, htmlContent]);
+
   // Tự động bắt sự kiện paste/drop hình ảnh trong editor để nén sang WebP
   useEffect(() => {
     if (!isQuillLoaded || !quillRef.current || !canEdit || isViewMode) return;

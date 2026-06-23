@@ -229,3 +229,67 @@ article.prose pre.ql-syntax code {
   background-color: #1e293b;
   color: #cbd5e1;
 }
+
+/* Định dạng nút Copy nổi trong khối mã nguồn */
+article.prose pre.ql-syntax {
+  position: relative !important;
+}
+
+.copy-code-btn {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  background-color: rgba(30, 41, 59, 0.75) !important;
+  border: 1px solid #475569 !important; /* slate-600 */
+  color: #cbd5e1 !important;
+  padding: 5px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease !important;
+  z-index: 10 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+}
+
+article.prose pre.ql-syntax:hover .copy-code-btn {
+  opacity: 1 !important;
+}
+
+.copy-code-btn:hover {
+  background-color: #334155 !important; /* slate-800 */
+  color: #ffffff !important;
+  transform: scale(1.05);
+}
+
+.copy-code-btn:active {
+  transform: scale(0.95);
+}
+
+/* Đảm bảo SVG trong nút Copy kế thừa kích thước */
+.copy-code-btn svg {
+  display: block;
+}
+
+/* Định dạng liên kết (links) tự động in nghiêng và màu xanh dương chuẩn web */
+.ql-editor a, article.prose a {
+  color: #2563eb !important; /* blue-600 */
+  text-decoration: underline !important;
+  font-style: italic !important;
+  transition: color 0.15s ease !important;
+}
+
+.ql-editor a:hover, article.prose a:hover {
+  color: #1d4ed8 !important; /* blue-700 */
+}
+
+.dark .ql-editor a, .dark article.prose a {
+  color: #60a5fa !important; /* blue-400 */
+}
+
+.dark .ql-editor a:hover, .dark article.prose a:hover {
+  color: #93c5fd !important; /* blue-300 */
+}

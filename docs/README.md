@@ -2,7 +2,7 @@
 
 Hệ thống quản lý tài liệu thông minh với React + Flask.
 
-**Version:** v1.0.9 • Build 2026-06-03-A
+**Version:** v1.1.0 • Build 2026-06-23-A
 
 ## Yêu cầu hệ thống
 - Docker & Docker Compose
@@ -28,11 +28,16 @@ chmod +x start_docker.sh
 - **Mặc định không có dữ liệu mẫu** - project mới hoàn toàn trống
 
 ### 2. Quản lý Tài liệu
-- Cấu trúc thư mục dạng tree (tối đa hóa chiều cao)
-- Rich-text editor (Quill)
-- **View/Edit mode** - Mặc định mở ở chế độ xem, click "Chỉnh sửa" để edit
-- Auto-save sau 3 giây
-- Export HTML
+- Cấu trúc thư mục dạng tree (TreeView) tối ưu hóa giao diện.
+- Rich-text editor (Quill) với nhiều tính năng nâng cao:
+  - **View/Edit mode**: Mặc định ở chế độ xem, click "Chỉnh sửa" để bắt đầu chỉnh sửa tài liệu.
+  - **Chèn Icon/Emoji**: Bộ chọn [IconPicker](file:///d:/code/docupedia/src-react/components/documents/IconPicker.jsx) tiện lợi tích hợp sẵn nhiều phân mục và thanh tìm kiếm tiện lợi.
+  - **Thanh trạng thái (Status Bar)**: Thống kê số từ, số ký tự thời gian thực ở góc dưới trình soạn thảo.
+  - **Chèn nhanh ngày/giờ**: Nút chèn ngày trên thanh công cụ và phím tắt mở rộng (`/today`, `/now`, `/time`, `/date`).
+  - **Nút Copy mã nguồn**: Nút Copy nổi tự động hiển thị khi rê chuột vào khối Code Block (`pre.ql-syntax`) ở chế độ View mode.
+  - **Định dạng liên kết (Web link)**: Tự động hiển thị liên kết màu xanh dương, gạch chân và in nghiêng chuẩn web.
+- Tự động lưu (Auto-save) sau khoảng thời gian tùy chọn (mặc định 3 giây).
+- Xuất bản tài liệu dưới định dạng HTML hoặc văn bản TXT.
 
 ### 3. Quản lý User (Admin)
 - Tạo/sửa/xóa user
@@ -140,6 +145,13 @@ rm -rf data/*
 ```
 
 ## Changelog
+
+### v1.1.0 (2026-06-23)
+- ✅ **Bộ chọn Icon/Emoji**: Tích hợp [IconPicker](file:///d:/code/docupedia/src-react/components/documents/IconPicker.jsx) tiện lợi cho tài liệu.
+- ✅ **Thanh trạng thái**: Thống kê số từ và số ký tự động của tài liệu thực tế.
+- ✅ **Chèn nhanh ngày/giờ**: Nút calendar chèn thời gian trên thanh công cụ và phím tắt tự động mở rộng (`/today`, `/now`, `/time`, `/date`).
+- ✅ **Copy Code nhanh**: Thêm nút copy nổi tiện dụng cho các khối mã nguồn ở chế độ Xem.
+- ✅ **Web Link Styles**: Tự động hiển thị liên kết màu xanh dương, gạch chân và in nghiêng chuẩn web.
 
 ### v1.0.9 (2026-06-03)
 - ✅ **Lazy Loading** - Pages được load theo yêu cầu
