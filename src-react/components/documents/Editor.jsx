@@ -13,6 +13,7 @@ import './Editor.css';
 import './CustomQuillImage';
 import { readFileAsDataURL, compressImageToWebP, formats } from './editorUtils';
 import TableTools from './TableTools';
+import IconPicker from './IconPicker';
 
 // Fix lỗi tương thích thư viện trong môi trường Vite/React
 window.Quill = Quill;
@@ -38,6 +39,9 @@ function Editor() {
   const [isViewMode, setIsViewMode] = useState(true); // Default to view mode
   const [isQuillLoaded, setIsQuillLoaded] = useState(isImageResizeRegistered);
   const [isInTable, setIsInTable] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [emojiSelection, setEmojiSelection] = useState(null);
+  const emojiButtonRef = useRef(null);
   
   const currentDocIdRef = useRef(null);
   const quillRef = useRef(null);
@@ -260,6 +264,37 @@ function Editor() {
     }, 100);
   }, [error]);
 
+  // Custom handler khi click nút emoji trên toolbar
+  const handleEmojiToolbarClick = useCallback(() => {
+    if (!quillRef.current) return;
+    const editor = quillRef.current.getEditor();
+    const range = editor.getSelection();
+    
+    setEmojiSelection(range || { index: editor.getLength(), length: 0 });
+    
+    const btn = document.querySelector('.ql-emoji');
+    if (btn) {
+      emojiButtonRef.current = btn;
+    }
+    
+    setIsEmojiPickerOpen(prev => !prev);
+  }, []);
+
+  const handleEmojiSelect = useCallback((emoji) => {
+    if (!quillRef.current) return;
+    const editor = quillRef.current.getEditor();
+    
+    editor.focus();
+    const index = emojiSelection ? emojiSelection.index : editor.getLength();
+    editor.insertText(index, emoji);
+    
+    editor.setSelection(index + emoji.length);
+    
+    setContent(editor.getContents());
+    setHasChanges(true);
+    setIsEmojiPickerOpen(false);
+  }, [emojiSelection]);
+
   // Cấu hình modules của Quill (useMemo để tránh re-render liên tục và truyền handler tùy biến)
   const modules = useMemo(() => {
     return {
@@ -304,14 +339,15 @@ function Editor() {
           [{ 'indent': '-1' }, { 'indent': '+1' }],
           [{ 'align': [] }],
           ['link', 'image', 'video'],
-          ['table'], // Thêm nút bảng vào toolbar
+          ['table', 'emoji'], // Thêm nút bảng và emoji vào toolbar
           ['blockquote', 'code-block'],
           ['clean'],
         ],
         handlers: {
           image: handleImageUploadClick,
           table: handleInsertTableClick,
-          video: handleVideoUploadClick
+          video: handleVideoUploadClick,
+          emoji: handleEmojiToolbarClick
         }
       },
       imageResize: {
@@ -319,7 +355,25 @@ function Editor() {
         modules: ['Resize', 'DisplaySize', 'Toolbar']
       }
     };
-  }, [handleImageUploadClick, handleInsertTableClick, handleVideoUploadClick]);
+  }, [handleImageUploadClick, handleInsertTableClick, handleVideoUploadClick, handleEmojiToolbarClick]);
+
+  // Inject icon cho nút emoji trên toolbar
+  useEffect(() => {
+    if (!isQuillLoaded || isViewMode) return;
+
+    const injectEmojiIcon = () => {
+      const emojiBtn = document.querySelector('.ql-emoji');
+      if (emojiBtn && !emojiBtn.querySelector('svg')) {
+        emojiBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>`;
+        emojiBtn.title = "Chèn biểu tượng cảm xúc / đặc biệt (Emoji & Icons)";
+      }
+    };
+
+    injectEmojiIcon();
+    const timer = setTimeout(injectEmojiIcon, 200);
+
+    return () => clearTimeout(timer);
+  }, [isQuillLoaded, isViewMode]);
 
   // Tự động bắt sự kiện paste/drop hình ảnh trong editor để nén sang WebP
   useEffect(() => {
@@ -1159,22 +1213,31 @@ function Editor() {
       {isInTable && <TableTools onTableOp={handleTableOp} />}
 
       {/* Editor */}
-      <div className="flex-1 overflow-hidden bg-white dark:bg-slate-900">
+      <div className="flex-1 overflow-hidden bg-white dark:bg-slate-900 relative">
         {!isQuillLoaded ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
           </div>
         ) : (
-          <ReactQuill
-            ref={quillRef}
-            theme="snow"
-            value={content}
-            onChange={handleContentChange}
-            modules={modules}
-            readOnly={!canEdit}
-            className="h-full docupedia-editor"
-            placeholder="Bắt đầu viết..."
-          />
+          <>
+            <ReactQuill
+              ref={quillRef}
+              theme="snow"
+              value={content}
+              onChange={handleContentChange}
+              modules={modules}
+              readOnly={!canEdit}
+              className="h-full docupedia-editor"
+              placeholder="Bắt đầu viết..."
+            />
+            {isEmojiPickerOpen && (
+              <IconPicker
+                onSelect={handleEmojiSelect}
+                onClose={() => setIsEmojiPickerOpen(false)}
+                buttonRef={emojiButtonRef}
+              />
+            )}
+          </>
         )}
       </div>
     </div>

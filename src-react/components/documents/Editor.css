@@ -162,3 +162,42 @@ article.prose pre.ql-syntax code {
   padding: 0 !important;
   font-size: inherit !important;
 }
+
+/* Custom ql-emoji toolbar button styling */
+.ql-snow.ql-toolbar button.ql-emoji,
+.ql-snow .ql-toolbar button.ql-emoji {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ql-snow.ql-toolbar button.ql-emoji svg,
+.ql-snow .ql-toolbar button.ql-emoji svg {
+  stroke: #64748b;
+  transition: stroke 0.15s ease, transform 0.15s ease;
+}
+
+.ql-snow.ql-toolbar button.ql-emoji:hover svg,
+.ql-snow .ql-toolbar button.ql-emoji:hover svg {
+  stroke: #10b981; /* emerald-600 */
+  transform: scale(1.1);
+}
+
+.dark .ql-snow.ql-toolbar button.ql-emoji svg,
+.dark .ql-snow .ql-toolbar button.ql-emoji svg {
+  stroke: #cbd5e1;
+}
+
+.dark .ql-snow.ql-toolbar button.ql-emoji:hover svg,
+.dark .ql-snow .ql-toolbar button.ql-emoji:hover svg {
+  stroke: #34d399; /* emerald-400 */
+}
+
+/* Ẩn thanh cuộn cho thanh chọn danh mục icon */
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+}
+.scrollbar-none {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
