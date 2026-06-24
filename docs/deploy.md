@@ -37,10 +37,7 @@ Do đó, **bạn hoàn toàn không cần chạy `npm install` hay `npm run buil
      chmod +x start_docker.sh
      ./start_docker.sh
      ```
-   * Trên **Windows** (Sử dụng Git Bash hoặc WSL):
-     ```bash
-     ./start_docker.sh
-     ```
+
 
    Script sẽ tự động dừng container cũ (nếu có), tiến hành build lại các thay đổi mới nhất (sử dụng cache thông minh) và khởi chạy container chạy ẩn ở nền (`-d`).
 
@@ -61,29 +58,4 @@ Do đó, **bạn hoàn toàn không cần chạy `npm install` hay `npm run buil
    ```
 
 ---
-
-## 🛠 Triển khai thủ công không dùng Docker (Local Development)
-
-Nếu bạn muốn chạy thử nghiệm trực tiếp trên môi trường của máy mà không qua Docker, hãy thực hiện theo thứ tự sau:
-
-1. **Biên dịch Frontend:**
-   * Cài đặt các thư viện Node.js:
-     ```bash
-     npm install
-     ```
-   * Biên dịch ứng dụng React thành file tĩnh:
-     ```bash
-     npm run build
-     ```
-   * *Lưu ý:* Bản build sẽ xuất ra thư mục `dist` ở gốc dự án.
-
-2. **Chạy Backend Python:**
-   * Tạo môi trường ảo và cài đặt thư viện Python:
-     ```bash
-     pip install -r requirements.txt
-     ```
-   * Khởi chạy server Flask:
-     ```bash
-     python src/app.py
-     ```
-   * Flask sẽ đọc và phục vụ file tĩnh trực tiếp từ thư mục `dist`.
+ 
