@@ -1,17 +1,36 @@
-import { X, FolderKanban, Plus, ChevronDown, FileText, Folder, Search, Globe } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { X, FolderKanban, Plus, ChevronDown, FileText, Folder, Search, Globe, Sun, Moon, User, LogOut, Settings } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useProject } from '../../contexts/ProjectContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import TreeView from '../documents/TreeView';
 
 function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAdmin, isAuthenticated } = useAuth(); // Lấy thêm isAuthenticated
+  const { user, logout, isAdmin, isAuthenticated } = useAuth();
   const { projects, fetchProjects, currentProject, selectProject, isLoading, tree } = useProject();
+  const { isDark, toggleTheme } = useTheme();
   const [showProjectList, setShowProjectList] = useState(false);
   const [projectSearchTerm, setProjectSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   // Xóa từ khóa tìm kiếm khi đóng dropdown
   useEffect(() => {
@@ -199,25 +218,139 @@ function Sidebar({ isOpen, onClose }) {
           </div>
 
           {/* Compact Footer */}
-          <div className="flex-shrink-0 px-3 py-2 border-t border-slate-200 dark:border-slate-800 text-center flex flex-col gap-1">
-            {currentProject && (
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                {nodeCount} tài liệu
-              </span>
-            )}
-            <span className="text-[10px] text-slate-400 dark:text-slate-500">
-              Copyright © 2026{' '}
-              <span className="group relative inline-block">
-                <a href="https://telua.vn/" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-500 hover:text-emerald-400 hover:underline transition-colors">Telua</a>
-                
-                {/* Custom Tooltip */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-xl pointer-events-none">
-                  Đơn vị phát triển phần mềm
-                  {/* Tooltip Arrow */}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-800 dark:border-t-slate-700"></div>
+          <div className="flex-shrink-0 px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-3 bg-slate-50/50 dark:bg-slate-900/50">
+            {/* Control Row: Theme toggle & User Menu */}
+            <div className="flex items-center justify-between">
+              {/* Theme Toggle */}
+              <button 
+                onClick={toggleTheme}
+                className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-all duration-200 active:scale-95"
+                title="Chuyển chế độ Sáng/Tối"
+              >
+                {isDark ? (
+                  <Sun className="w-4 h-4 text-amber-500 animate-pulse" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
+              </button>
+
+              {/* User Menu or Login */}
+              {isAuthenticated ? (
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className={`flex items-center gap-2 p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-all duration-200 active:scale-95 ${
+                      showDropdown ? 'bg-slate-200 dark:bg-slate-800' : ''
+                    }`}
+                  >
+                    <div className="w-7 h-7 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-xs font-semibold shadow-md shadow-emerald-200 dark:shadow-none">
+                      {user?.display_name?.[0] || user?.username?.[0] || 'U'}
+                    </div>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 max-w-[120px] truncate">
+                      {user?.display_name || user?.username}
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Dropdown Menu popped up above the footer button */}
+                  {showDropdown && (
+                    <div className="absolute bottom-full right-0 mb-2 w-56 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-50">
+                      <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {user?.display_name || user?.username}
+                        </p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                          {user?.email || (isAdmin ? 'Administrator' : 'User')}
+                        </p>
+                        {isAdmin && (
+                          <span className="inline-block mt-1.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                            Admin
+                          </span>
+                        )}
+                      </div>
+                      
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setShowDropdown(false);
+                              navigate('/users');
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                          >
+                            <User className="w-3.5 h-3.5 text-slate-400" />
+                            Quản lý người dùng
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowDropdown(false);
+                              navigate('/projects/manage');
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                          >
+                            <FolderKanban className="w-3.5 h-3.5 text-slate-400" />
+                            Quản lý dự án
+                          </button>
+                        </>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setShowDropdown(false);
+                          navigate('/settings');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-slate-400" />
+                        Cài đặt
+                      </button>
+
+                      <div className="border-t border-slate-100 dark:border-slate-800">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          Đăng xuất
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <button
+                  onClick={() => navigate('/login')}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all duration-200 active:scale-95"
+                >
+                  <User className="w-4 h-4" />
+                  Đăng nhập
+                </button>
+              )}
+            </div>
+
+            {/* Copyright and stats */}
+            <div className="flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 px-1">
+              {currentProject ? (
+                <span className="font-semibold text-slate-500 dark:text-slate-400">
+                  {nodeCount} tài liệu
+                </span>
+              ) : (
+                <span>Docupedia</span>
+              )}
+              <span>
+                Copyright © 2026{' '}
+                <span className="group relative inline-block">
+                  <a href="https://telua.vn/" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-500 hover:text-emerald-400 hover:underline transition-colors">Telua</a>
+                  
+                  {/* Custom Tooltip */}
+                  <div className="absolute bottom-full right-0 mb-1.5 px-2.5 py-1 bg-slate-800 dark:bg-slate-700 text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-xl pointer-events-none">
+                    Đơn vị phát triển phần mềm
+                    {/* Tooltip Arrow */}
+                    <div className="absolute top-full right-4 border-[5px] border-transparent border-t-slate-800 dark:border-t-slate-700"></div>
+                  </div>
+                </span>
               </span>
-            </span>
+            </div>
           </div>
         </div>
       </aside>
