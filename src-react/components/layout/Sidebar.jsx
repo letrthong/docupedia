@@ -83,7 +83,10 @@ function Sidebar({ isOpen, onClose }) {
           {/* Logo & Close */}
           <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-slate-800">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => {
+                selectProject(null);
+                navigate('/');
+              }}
               className="flex items-center gap-3 hover:opacity-80 transition"
             >
               <div className="bg-emerald-600 text-white p-2 rounded-lg flex items-center justify-center shadow-md shadow-emerald-200 dark:shadow-none">

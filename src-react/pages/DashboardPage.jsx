@@ -11,7 +11,8 @@ function DashboardPage() {
 
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+    selectProject(null);
+  }, [fetchProjects, selectProject]);
 
   const handleProjectClick = (project) => {
     selectProject(project.id);
