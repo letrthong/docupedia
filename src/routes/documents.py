@@ -155,3 +155,121 @@ def export_document(project_id, doc_id):
         return success_response(result)
     else:
         return error_response(result, 'EXPORT_FAILED', 400)
+
+
+@projects_bp.route('/<project_id>/documents/<doc_id>/comments', methods=['GET'])
+@optional_auth
+def get_document_comments(project_id, doc_id):
+    """GET /api/v1/projects/:projectId/documents/:id/comments - Get document comments"""
+    user = get_current_user()
+    project = ProjectService.get_project_by_id(project_id)
+    
+    permissions = []
+    if user:
+        permissions = get_user_permissions(user['id'], project_id, user.get('role'))
+        
+    if 'view' not in permissions and (not project or not project.get('is_public')):
+        return error_response('Không có quyền truy cập', 'PERMISSION_DENIED', 403)
+        
+    document = DocumentService.get_document(project_id, doc_id)
+    if not document:
+        return error_response('Không tìm thấy tài liệu', 'NOT_FOUND', 404)
+        
+    comments = DocumentService.get_comments(project_id, doc_id)
+    return success_response(comments)
+
+
+@projects_bp.route('/<project_id>/documents/<doc_id>/comments', methods=['POST'])
+@require_auth
+def add_document_comment(project_id, doc_id):
+    """POST /api/v1/projects/:projectId/documents/:id/comments - Add a comment"""
+    user = get_current_user()
+    project = ProjectService.get_project_by_id(project_id)
+    
+    permissions = get_user_permissions(user['id'], project_id, user.get('role'))
+    if 'view' not in permissions and (not project or not project.get('is_public')):
+        return error_response('Không có quyền truy cập', 'PERMISSION_DENIED', 403)
+        
+    data = request.get_json() or {}
+    content = data.get('content', '').strip()
+    parent_id = data.get('parent_id')
+    if not content:
+        return error_response('Nội dung bình luận không được để trống', 'VALIDATION_ERROR', 400)
+        
+    document = DocumentService.get_document(project_id, doc_id)
+    if not document:
+        return error_response('Không tìm thấy tài liệu', 'NOT_FOUND', 404)
+        
+    success, result = DocumentService.add_comment(project_id, doc_id, content, user['id'], parent_id)
+    if success:
+        return success_response(result, 'Thêm bình luận thành công', 201)
+    return error_response(result, 'ADD_COMMENT_FAILED', 400)
+
+
+@projects_bp.route('/<project_id>/documents/<doc_id>/comments/<comment_id>', methods=['PUT'])
+@require_auth
+def update_document_comment(project_id, doc_id, comment_id):
+    """PUT /api/v1/projects/:projectId/documents/:id/comments/:commentId - Update comment"""
+    user = get_current_user()
+    
+    data = request.get_json() or {}
+    content = data.get('content', '').strip()
+    if not content:
+        return error_response('Nội dung bình luận không được để trống', 'VALIDATION_ERROR', 400)
+        
+    document = DocumentService.get_document(project_id, doc_id)
+    if not document:
+        return error_response('Không tìm thấy tài liệu', 'NOT_FOUND', 404)
+        
+    permissions = get_user_permissions(user['id'], project_id, user.get('role'))
+    is_admin_or_manage = user.get('role') == 'admin' or 'manage' in permissions or 'edit' in permissions
+    
+    success, result = DocumentService.update_comment(
+        project_id, doc_id, comment_id, content, user['id'], is_admin_or_manage
+    )
+    if success:
+        return success_response(result, 'Cập nhật bình luận thành công')
+    return error_response(result, 'UPDATE_COMMENT_FAILED', 400)
+
+
+@projects_bp.route('/<project_id>/documents/<doc_id>/comments/<comment_id>', methods=['DELETE'])
+@require_auth
+def delete_document_comment(project_id, doc_id, comment_id):
+    """DELETE /api/v1/projects/:projectId/documents/:id/comments/:commentId - Delete comment"""
+    user = get_current_user()
+    
+    document = DocumentService.get_document(project_id, doc_id)
+    if not document:
+        return error_response('Không tìm thấy tài liệu', 'NOT_FOUND', 404)
+        
+    permissions = get_user_permissions(user['id'], project_id, user.get('role'))
+    is_admin_or_manage = user.get('role') == 'admin' or 'manage' in permissions or 'edit' in permissions
+    
+    success, result = DocumentService.delete_comment(
+        project_id, doc_id, comment_id, user['id'], is_admin_or_manage
+    )
+    if success:
+        return success_response(None, result)
+    return error_response(result, 'DELETE_COMMENT_FAILED', 400)
+
+
+@projects_bp.route('/<project_id>/documents/<doc_id>/history', methods=['GET'])
+@optional_auth
+def get_document_history(project_id, doc_id):
+    """GET /api/v1/projects/:projectId/documents/:id/history - Get document history"""
+    user = get_current_user()
+    project = ProjectService.get_project_by_id(project_id)
+    
+    permissions = []
+    if user:
+        permissions = get_user_permissions(user['id'], project_id, user.get('role'))
+        
+    if 'view' not in permissions and (not project or not project.get('is_public')):
+        return error_response('Không có quyền truy cập', 'PERMISSION_DENIED', 403)
+        
+    document = DocumentService.get_document(project_id, doc_id)
+    if not document:
+        return error_response('Không tìm thấy tài liệu', 'NOT_FOUND', 404)
+        
+    history = DocumentService.get_history(project_id, doc_id)
+    return success_response(history)

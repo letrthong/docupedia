@@ -40,6 +40,31 @@ const documentsApi = {
       params: { format },
     });
   },
+
+  // Get comments
+  getComments: async (projectId, docId) => {
+    return client.get(`/projects/${projectId}/documents/${docId}/comments`);
+  },
+
+  // Add comment
+  addComment: async (projectId, docId, content, parentId = null) => {
+    return client.post(`/projects/${projectId}/documents/${docId}/comments`, { content, parent_id: parentId });
+  },
+
+  // Update comment
+  updateComment: async (projectId, docId, commentId, content) => {
+    return client.put(`/projects/${projectId}/documents/${docId}/comments/${commentId}`, { content });
+  },
+
+  // Delete comment
+  deleteComment: async (projectId, docId, commentId) => {
+    return client.delete(`/projects/${projectId}/documents/${docId}/comments/${commentId}`);
+  },
+
+  // Get edit history
+  getHistory: async (projectId, docId) => {
+    return client.get(`/projects/${projectId}/documents/${docId}/history`);
+  },
 };
 
 export default documentsApi;

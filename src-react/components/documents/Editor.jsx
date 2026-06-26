@@ -14,6 +14,8 @@ import './CustomQuillImage';
 import { readFileAsDataURL, compressImageToWebP, formats } from './editorUtils';
 import TableTools from './TableTools';
 import IconPicker from './IconPicker';
+import CommentsSection from './CommentsSection';
+import HistorySection from './HistorySection';
 
 // Fix lỗi tương thích thư viện trong môi trường Vite/React
 window.Quill = Quill;
@@ -24,7 +26,7 @@ let isImageResizeRegistered = false;
 function Editor() {
   const { currentProject, currentDocument, saveDocument, hasPermission, setCurrentDocument } = useProject();
   const { success, error } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const canEdit = isAuthenticated && hasPermission('edit');
   const isAutoSaveEnabled = localStorage.getItem('enableAutoSave') === 'true';
@@ -38,6 +40,9 @@ function Editor() {
   const [lastSaved, setLastSaved] = useState(null);
   const [isViewMode, setIsViewMode] = useState(true); // Default to view mode
   const [isQuillLoaded, setIsQuillLoaded] = useState(isImageResizeRegistered);
+
+  // States for comments and history feature
+  const [activeTab, setActiveTab] = useState('comments');
   const [isInTable, setIsInTable] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [emojiSelection, setEmojiSelection] = useState(null);
@@ -50,6 +55,8 @@ function Editor() {
   const saveTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
   const handleSaveRef = useRef(null);
+
+
 
   // Custom handler khi click nút chọn ảnh trên toolbar
   const handleImageUploadClick = useCallback(() => {
@@ -1168,6 +1175,8 @@ function Editor() {
     }
   };
 
+
+
   // VIEW MODE
   if (isViewMode) {
     return (
@@ -1237,11 +1246,44 @@ function Editor() {
 
         {/* View Mode Content */}
         <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950">
-          <div className="max-w-4xl mx-auto p-4 sm:p-8 min-h-full flex flex-col">
+          <div className="max-w-4xl mx-auto p-4 sm:p-8 min-h-full flex flex-col gap-6">
             <article 
               className="flex-1 prose prose-slate dark:prose-invert max-w-none bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-10 shadow-sm border border-slate-200 dark:border-slate-800"
               dangerouslySetInnerHTML={{ __html: htmlContent || '<p class="text-slate-400">Tài liệu trống</p>' }}
             />
+            
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-800">
+              {/* Tab headers */}
+              <div className="flex border-b border-slate-150 dark:border-slate-800 mb-6">
+                <button
+                  className={`pb-3 px-4 text-sm font-semibold border-b-2 transition-colors ${
+                    activeTab === 'comments'
+                      ? 'border-emerald-500 text-emerald-600 dark:text-emerald-450'
+                      : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                  }`}
+                  onClick={() => setActiveTab('comments')}
+                >
+                  Bình luận
+                </button>
+                <button
+                  className={`pb-3 px-4 text-sm font-semibold border-b-2 transition-colors ${
+                    activeTab === 'history'
+                      ? 'border-emerald-500 text-emerald-600 dark:text-emerald-450'
+                      : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                  }`}
+                  onClick={() => setActiveTab('history')}
+                >
+                  Lịch sử thay đổi
+                </button>
+              </div>
+
+              {/* Tab contents */}
+              {activeTab === 'comments' ? (
+                <CommentsSection />
+              ) : (
+                <HistorySection />
+              )}
+            </div>
           </div>
         </div>
       </div>

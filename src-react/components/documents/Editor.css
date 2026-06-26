@@ -293,3 +293,38 @@ article.prose pre.ql-syntax:hover .copy-code-btn {
 .dark .ql-editor a:hover, .dark article.prose a:hover {
   color: #93c5fd !important; /* blue-300 */
 }
+
+/* Align preview mode vertical spacing with Quill editor to prevent huge gaps */
+article.prose p {
+  margin: 0 0 6px 0 !important;
+  line-height: 1.6 !important;
+}
+
+article.prose p:last-child {
+  margin-bottom: 0 !important;
+}
+
+article.prose h1, article.prose h2, article.prose h3, article.prose h4, article.prose h5, article.prose h6 {
+  margin-top: 20px !important;
+  margin-bottom: 10px !important;
+  font-weight: 700 !important;
+}
+
+article.prose h1:first-child, article.prose h2:first-child, article.prose h3:first-child {
+  margin-top: 0 !important;
+}
+
+article.prose ul, article.prose ol {
+  margin-top: 8px !important;
+  margin-bottom: 8px !important;
+  padding-left: 24px !important;
+}
+
+article.prose li {
+  margin-top: 4px !important;
+  margin-bottom: 4px !important;
+}
+
+article.prose li p {
+  margin: 0 !important;
+}
