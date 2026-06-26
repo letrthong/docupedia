@@ -224,19 +224,6 @@ function Sidebar({ isOpen, onClose }) {
           <div className="flex-shrink-0 px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-3 bg-slate-50/50 dark:bg-slate-900/50">
             {/* Control Row: Theme toggle & User Menu */}
             <div className="flex items-center justify-between">
-              {/* Theme Toggle */}
-              <button 
-                onClick={toggleTheme}
-                className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-all duration-200 active:scale-95"
-                title="Chuyển chế độ Sáng/Tối"
-              >
-                {isDark ? (
-                  <Sun className="w-4 h-4 text-amber-500 animate-pulse" />
-                ) : (
-                  <Moon className="w-4 h-4" />
-                )}
-              </button>
-
               {/* User Menu or Login */}
               {isAuthenticated ? (
                 <div className="relative" ref={dropdownRef}>
@@ -257,7 +244,7 @@ function Sidebar({ isOpen, onClose }) {
 
                   {/* Dropdown Menu popped up above the footer button */}
                   {showDropdown && (
-                    <div className="absolute bottom-full right-0 mb-2 w-56 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-50">
+                    <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-50">
                       <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
                         <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                           {user?.display_name || user?.username}
@@ -329,6 +316,19 @@ function Sidebar({ isOpen, onClose }) {
                   Đăng nhập
                 </button>
               )}
+
+              {/* Theme Toggle */}
+              <button 
+                onClick={toggleTheme}
+                className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-all duration-200 active:scale-95"
+                title="Chuyển chế độ Sáng/Tối"
+              >
+                {isDark ? (
+                  <Sun className="w-4 h-4 text-amber-500 animate-pulse" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
+              </button>
             </div>
 
             {/* Copyright and stats */}
