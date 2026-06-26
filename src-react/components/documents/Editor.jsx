@@ -1258,7 +1258,7 @@ function Editor() {
                 <button
                   className={`pb-3 px-4 text-sm font-semibold border-b-2 transition-colors ${
                     activeTab === 'comments'
-                      ? 'border-emerald-500 text-emerald-600 dark:text-emerald-450'
+                      ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                       : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                   }`}
                   onClick={() => setActiveTab('comments')}
@@ -1268,7 +1268,7 @@ function Editor() {
                 <button
                   className={`pb-3 px-4 text-sm font-semibold border-b-2 transition-colors ${
                     activeTab === 'history'
-                      ? 'border-emerald-500 text-emerald-600 dark:text-emerald-450'
+                      ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                       : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                   }`}
                   onClick={() => setActiveTab('history')}

@@ -503,7 +503,6 @@ Khi hệ thống khởi tạo lần đầu, tự động tạo tài khoản admi
   "created_at": "2026-06-02T10:00:00Z",
   "updated_at": "2026-06-02T12:30:00Z"
 }
-```
 
 ### 5.6. Tree Structure (`projects/<project_id>/tree.json`)
 
@@ -522,6 +521,75 @@ Khi hệ thống khởi tạo lần đầu, tự động tạo tài khoản admi
   },
   "updated_at": "2026-06-02T12:30:00Z"
 }
+```
+
+### 5.7. Comment Schema (`projects/<project_id>/docs/<doc_id>_comments.json`)
+
+```json
+{
+  "doc_id": "doc_1717347200000",
+  "comments": [
+    {
+      "id": "comment_1",
+      "parent_id": null,
+      "user_id": "user_2",
+      "username": "john",
+      "display_name": "John Doe",
+      "content": "R3IGEgYiBswrBuIGx14bqtbiBiYXNlNjQ=",
+      "created_at": "2026-06-26T20:00:00+07:00",
+      "updated_at": "2026-06-26T20:00:00+07:00"
+    },
+    {
+      "id": "comment_2",
+      "parent_id": "comment_1",
+      "user_id": "user_1",
+      "username": "admin",
+      "display_name": "Administrator",
+      "content": "UGjhuqNuIGjhu5NpIGLhuqFuIEpvaG4=",
+      "created_at": "2026-06-26T20:05:00+07:00",
+      "updated_at": "2026-06-26T20:05:00+07:00"
+    }
+  ]
+}
+```
+
+### 5.8. History Schema (`projects/<project_id>/docs/<doc_id>_history.json`)
+
+```json
+{
+  "doc_id": "doc_1717347200000",
+  "history": [
+    {
+      "id": "hist_1",
+      "user_id": "user_1",
+      "username": "admin",
+      "display_name": "Administrator",
+      "action": "create",
+      "timestamp": "2026-06-02T10:00:00Z",
+      "details": {
+        "title": "Tài liệu ABC"
+      }
+    },
+    {
+      "id": "hist_2",
+      "user_id": "user_2",
+      "username": "john",
+      "display_name": "John Doe",
+      "action": "update",
+      "timestamp": "2026-06-02T12:30:00Z",
+      "details": {
+        "changes": {
+          "title": {
+            "old": "Tài liệu ABC",
+            "new": "Tài liệu ABC v2"
+          },
+          "content": "Nội dung tài liệu được cập nhật"
+        }
+      }
+    }
+  ]
+}
+```
 
 ---
 
@@ -539,7 +607,11 @@ docupedia_data/
     │   ├── tree.json       # Cấu trúc cây của project
     │   ├── docs/
     │   │   ├── doc_1.json
-    │   │   └── doc_2.json
+    │   │   ├── doc_1_comments.json
+    │   │   ├── doc_1_history.json
+    │   │   ├── doc_2.json
+    │   │   ├── doc_2_comments.json
+    │   │   └── doc_2_history.json
     │   └── folders/
     │       ├── folder_1.json
     │       └── folder_2.json

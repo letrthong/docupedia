@@ -14,6 +14,7 @@ function NewProjectPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
+  const [allowPublicComments, setAllowPublicComments] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   
@@ -88,6 +89,7 @@ function NewProjectPage() {
         name: name.trim(),
         description: description.trim(),
         is_public: isPublic,
+        allow_public_comments: allowPublicComments,
       });
 
       if (response.success) {
@@ -165,7 +167,10 @@ function NewProjectPage() {
                 <input
                   type="checkbox"
                   checked={isPublic}
-                  onChange={(e) => setIsPublic(e.target.checked)}
+                  onChange={(e) => {
+                    setIsPublic(e.target.checked);
+                    if (!e.target.checked) setAllowPublicComments(false);
+                  }}
                   className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
                 />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -173,6 +178,22 @@ function NewProjectPage() {
                 </span>
               </label>
             </div>
+            
+            {isPublic && (
+              <div className="pt-2 pl-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allowPublicComments}
+                    onChange={(e) => setAllowPublicComments(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                  />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Cho phép công khai bình luận (Public comments - Ai cũng xem được bình luận)
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
         </div>
 

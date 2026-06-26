@@ -66,6 +66,7 @@ class ProjectService:
             'owner_id': owner_id,
             'is_active': True,
             'is_public': bool(data.get('is_public', False)),
+            'allow_public_comments': bool(data.get('allow_public_comments', False)),
             'created_at': get_timestamp(),
             'updated_at': get_timestamp()
         }
@@ -103,10 +104,10 @@ class ProjectService:
             return False, "Không tìm thấy project"
         
         updates = {}
-        allowed_fields = ['name', 'description', 'is_active', 'is_public']
+        allowed_fields = ['name', 'description', 'is_active', 'is_public', 'allow_public_comments']
         for field in allowed_fields:
             if field in data:
-                if field == 'is_public':
+                if field in ['is_public', 'allow_public_comments']:
                     updates[field] = bool(data[field])
                 else:
                     updates[field] = data[field]

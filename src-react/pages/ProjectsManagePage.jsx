@@ -16,7 +16,7 @@ function ProjectsManagePage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Form data for edit
-  const [editForm, setEditForm] = useState({ name: '', description: '', is_public: false });
+  const [editForm, setEditForm] = useState({ name: '', description: '', is_public: false, allow_public_comments: false });
 
   // Permission modal state
   const [projectPermissions, setProjectPermissions] = useState([]);
@@ -57,7 +57,8 @@ function ProjectsManagePage() {
     setEditForm({ 
       name: project.name, 
       description: project.description || '',
-      is_public: project.is_public || false
+      is_public: project.is_public || false,
+      allow_public_comments: project.allow_public_comments || false
     });
     setEditModal({ open: true, project });
   };
@@ -350,7 +351,14 @@ function ProjectsManagePage() {
               <input
                 type="checkbox"
                 checked={editForm.is_public}
-                onChange={(e) => setEditForm({ ...editForm, is_public: e.target.checked })}
+                onChange={(e) => {
+                  const isChecked = e.target.checked;
+                  setEditForm({
+                    ...editForm,
+                    is_public: isChecked,
+                    allow_public_comments: isChecked ? editForm.allow_public_comments : false
+                  });
+                }}
                 className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
               />
               <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -358,6 +366,21 @@ function ProjectsManagePage() {
               </span>
             </label>
           </div>
+          {editForm.is_public && (
+            <div className="pt-2 pl-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editForm.allow_public_comments}
+                  onChange={(e) => setEditForm({ ...editForm, allow_public_comments: e.target.checked })}
+                  className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Cho phép công khai bình luận (Public comments - Ai cũng xem được bình luận)
+                </span>
+              </label>
+            </div>
+          )}
           <div className="flex justify-end gap-3 pt-4">
             <Button
               variant="ghost"

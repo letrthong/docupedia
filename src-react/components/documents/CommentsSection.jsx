@@ -6,6 +6,28 @@ import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../common';
 import { documentsApi } from '../../api';
 
+const renderCommentTextWithLinks = (text) => {
+  if (!text) return "";
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, index) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a 
+          key={index} 
+          href={part} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-indigo-600 dark:text-indigo-400 hover:underline break-all"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 function CommentsSection() {
   const { currentProject, currentDocument } = useProject();
   const { isAuthenticated, user } = useAuth();
@@ -28,6 +50,11 @@ function CommentsSection() {
       setComments([]);
       return;
     }
+    const isPublicCommentsAllowed = currentProject?.is_public && currentProject?.allow_public_comments;
+    if (!isAuthenticated && !isPublicCommentsAllowed) {
+      setComments([]);
+      return;
+    }
     setIsCommentsLoading(true);
     try {
       const res = await documentsApi.getComments(currentProject.id, currentDocument.id);
@@ -38,7 +65,7 @@ function CommentsSection() {
       console.error('Lỗi khi tải bình luận:', err);
     }
     setIsCommentsLoading(false);
-  }, [currentProject, currentDocument]);
+  }, [currentProject, currentDocument, isAuthenticated]);
 
   useEffect(() => {
     fetchComments();
@@ -119,7 +146,8 @@ function CommentsSection() {
 
   if (!currentDocument) return null;
 
-  if (!isAuthenticated) {
+  const isPublicCommentsAllowed = currentProject?.is_public && currentProject?.allow_public_comments;
+  if (!isAuthenticated && !isPublicCommentsAllowed) {
     return (
       <div className="text-center py-8">
         <MessageSquare className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
@@ -179,7 +207,7 @@ function CommentsSection() {
                         setEditingCommentId(comment.id);
                         setEditingContent(comment.content);
                       }}
-                      className="text-[10px] text-slate-400 hover:text-emerald-600 p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-850"
+                      className="text-[10px] text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-850"
                       title="Chỉnh sửa"
                     >
                       <Edit className="w-3 h-3" />
@@ -203,7 +231,7 @@ function CommentsSection() {
                   value={editingContent}
                   onChange={(e) => setEditingContent(e.target.value)}
                   rows="2"
-                  className="w-full px-3 py-1.5 text-xs text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-750 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-3 py-1.5 text-xs text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-750 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
                 <div className="flex justify-end gap-2 mt-1.5">
                   <Button
@@ -230,21 +258,24 @@ function CommentsSection() {
             ) : (
               <>
                 <p className={`mt-1 ${depth === 0 ? "text-sm text-slate-700 dark:text-slate-350" : "text-xs text-slate-650 dark:text-slate-350"} whitespace-pre-line leading-relaxed`}>
-                  {comment.content}
+                  {renderCommentTextWithLinks(comment.content)}
                 </p>
                 
                 {/* Reply button */}
-                <div className="flex items-center gap-3 mt-1.5">
-                  <button
-                    onClick={() => {
-                      setReplyingToId(replyingToId === comment.id ? null : comment.id);
-                      setNewReply('');
-                    }}
-                    className="text-xs text-emerald-600 dark:text-emerald-450 hover:underline font-medium"
-                  >
-                    Phản hồi
-                  </button>
-                </div>
+                {isAuthenticated && (
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <button
+                      onClick={() => {
+                        setReplyingToId(replyingToId === comment.id ? null : comment.id);
+                        setNewReply('');
+                      }}
+                      className="text-xs text-indigo-650 dark:text-indigo-400 hover:underline font-medium"
+                      title="Phản hồi"
+                    >
+                      Phản hồi
+                    </button>
+                  </div>
+                )}
               </>
             )}
 
@@ -257,7 +288,7 @@ function CommentsSection() {
                     onChange={(e) => setNewReply(e.target.value)}
                     placeholder="Viết phản hồi của bạn..."
                     rows="2"
-                    className="flex-1 px-3 py-1.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="flex-1 px-3 py-1.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
                 <div className="flex justify-end gap-2 mt-2">
@@ -298,44 +329,52 @@ function CommentsSection() {
   return (
     <div className="space-y-6">
       <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
-        <MessageSquare className="w-5 h-5 text-emerald-600 dark:text-emerald-450" />
+        <MessageSquare className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
         Bình luận ({totalComments})
       </h3>
 
-      {/* Comment input form */}
-      <form onSubmit={handleAddComment} className="mb-6">
-        <div className="flex gap-3">
-          <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-450 font-bold text-sm uppercase">
-            {user?.username?.charAt(0) || 'U'}
-          </div>
-          <div className="flex-1">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Viết bình luận của bạn..."
-              rows="3"
-              className="w-full px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-            />
-            <div className="flex justify-end mt-2">
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                disabled={isSubmittingComment || !newComment.trim()}
-                title="Gửi bình luận"
-              >
-                <Send className="w-3.5 h-3.5 mr-1" />
-                Bình luận
-              </Button>
+      {/* Comment input form or login prompt */}
+      {!isAuthenticated ? (
+        <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+          <p className="text-sm text-slate-650 dark:text-slate-400 font-medium">
+            Vui lòng đăng nhập để gửi bình luận.
+          </p>
+        </div>
+      ) : (
+        <form onSubmit={handleAddComment} className="mb-6">
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-650 dark:text-slate-400 font-bold text-sm uppercase">
+              {user?.username?.charAt(0) || 'U'}
+            </div>
+            <div className="flex-1">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Viết bình luận của bạn..."
+                rows="3"
+                className="w-full px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+              <div className="flex justify-end mt-2">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={isSubmittingComment || !newComment.trim()}
+                  title="Gửi bình luận"
+                >
+                  <Send className="w-3.5 h-3.5 mr-1" />
+                  Bình luận
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </form>
+        </form>
+      )}
 
       {/* Comments list */}
       {isCommentsLoading ? (
         <div className="flex justify-center py-6">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600"></div>
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
         </div>
       ) : comments.length === 0 ? (
         <div className="text-center py-8 text-slate-400 dark:text-slate-650 text-sm">

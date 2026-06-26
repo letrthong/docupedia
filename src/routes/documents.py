@@ -168,8 +168,13 @@ def get_document_comments(project_id, doc_id):
     if user:
         permissions = get_user_permissions(user['id'], project_id, user.get('role'))
         
-    if 'view' not in permissions and (not project or not project.get('is_public')):
+    has_project_access = ('view' in permissions) or (project and project.get('is_public'))
+    if not has_project_access:
         return error_response('Không có quyền truy cập', 'PERMISSION_DENIED', 403)
+        
+    has_comments_access = ('view' in permissions) or (project and project.get('is_public') and project.get('allow_public_comments', False))
+    if not has_comments_access:
+        return error_response('Bình luận của dự án này không được công khai', 'PERMISSION_DENIED', 403)
         
     document = DocumentService.get_document(project_id, doc_id)
     if not document:

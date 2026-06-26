@@ -2,7 +2,7 @@
 
 Hệ thống quản lý tài liệu thông minh với React + Flask.
 
-**Version:** v1.1.0 • Build 2026-06-23-A
+**Version:** v1.2.0 • Build 2026-06-26-A
 
 ## Yêu cầu hệ thống
 - Docker & Docker Compose
@@ -99,6 +99,15 @@ docupedia/
 - `PUT /api/v1/projects/:id/documents/:docId` - Cập nhật
 - `DELETE /api/v1/projects/:id/documents/:docId` - Xóa
 
+### Comments & Replies
+- `GET /api/v1/projects/:id/documents/:docId/comments` - Lấy danh sách bình luận (phân cấp cây đệ quy)
+- `POST /api/v1/projects/:id/documents/:docId/comments` - Thêm bình luận mới hoặc phản hồi (`parent_id` trong body)
+- `PUT /api/v1/projects/:id/documents/:docId/comments/:commentId` - Cập nhật nội dung bình luận
+- `DELETE /api/v1/projects/:id/documents/:docId/comments/:commentId` - Xóa bình luận (xóa đệ quy phản hồi con)
+
+### History
+- `GET /api/v1/projects/:id/documents/:docId/history` - Lấy lịch sử thay đổi của tài liệu (timeline)
+
 ## Phân quyền
 
 | Quyền | Mô tả |
@@ -145,6 +154,13 @@ rm -rf data/*
 ```
 
 ## Changelog
+
+### v1.2.0 (2026-06-26)
+- ✅ **Bình luận & Phản hồi đệ quy**: Tách biệt lưu trữ bình luận sang tệp JSON riêng, hỗ trợ luồng phản hồi lồng nhau đệ quy không giới hạn cấp độ.
+- ✅ **Bảo mật & Mã hóa Base64**: Toàn bộ nội dung bình luận được lưu trữ an toàn dưới dạng Base64 trên đĩa, tự động giải mã khi đọc/hiển thị.
+- ✅ **Ràng buộc luồng thảo luận**: Tự động ẩn/chặn quyền Sửa và Xóa đối với các bình luận đã nhận phản hồi từ người khác để bảo toàn tính toàn vẹn của cuộc hội thoại.
+- ✅ **Lịch sử thay đổi tài liệu**: Lưu trữ nhật ký chỉnh sửa (khởi tạo, cập nhật tiêu đề/nội dung) ở tệp JSON riêng và hiển thị timeline trực quan ở View mode.
+- ✅ **Giao diện Tabbed Layout**: Chuyển đổi linh hoạt giữa tab Bình luận và Lịch sử thay đổi ở chế độ Xem tài liệu.
 
 ### v1.1.0 (2026-06-23)
 - ✅ **Bộ chọn Icon/Emoji**: Tích hợp [IconPicker](file:///d:/code/docupedia/src-react/components/documents/IconPicker.jsx) tiện lợi cho tài liệu.
