@@ -35,15 +35,61 @@ class PermissionService:
         return []
     
     @staticmethod
+    def _convert_permissions_to_list(perms_input) -> List[str]:
+        if isinstance(perms_input, dict):
+            perms_list = []
+            if perms_input.get('view') is True:
+                perms_list.append('view')
+            if perms_input.get('edit') is True:
+                perms_list.extend(['edit', 'create'])
+            if perms_input.get('delete') is True:
+                perms_list.append('delete')
+            return list(set(perms_list))
+        if isinstance(perms_input, list):
+            return perms_input
+        return []
+
+    @staticmethod
     def get_project_permissions(project_id: str) -> List[Dict]:
-        """Get all permissions for a project"""
+        """Get all permissions for a project joined with user info and formatted for frontend"""
         permissions = JSONStorage.get_list(config.PERMISSIONS_FILE, 'permissions')
-        return [p for p in permissions if p['project_id'] == project_id]
+        project_perms = [p for p in permissions if p['project_id'] == project_id]
+        
+        users = JSONStorage.get_list(config.USERS_FILE, 'users')
+        user_map = {u['id']: u for u in users}
+        
+        result = []
+        for p in project_perms:
+            user_id = p['user_id']
+            user_info = user_map.get(user_id) or user_map.get(str(user_id)) or user_map.get(int(user_id)) if isinstance(user_id, (int, str)) else None
+            
+            perms_list = p.get('permissions', [])
+            mapped = {
+                'id': p.get('id'),
+                'user_id': user_id,
+                'project_id': project_id,
+                'view': 'view' in perms_list,
+                'edit': 'edit' in perms_list,
+                'delete': 'delete' in perms_list,
+                'granted_by': p.get('granted_by'),
+                'granted_at': p.get('granted_at')
+            }
+            if user_info:
+                mapped['username'] = user_info.get('username')
+                mapped['display_name'] = user_info.get('display_name')
+            else:
+                mapped['username'] = 'Unknown'
+                mapped['display_name'] = 'Unknown'
+            result.append(mapped)
+            
+        return result
     
     @staticmethod
-    def grant_permission(project_id: str, user_id: str, permissions: List[str], 
-                        granted_by: str) -> Tuple[bool, any]:
+    def grant_permission(project_id: str, user_id: str, permissions: any, 
+                         granted_by: str) -> Tuple[bool, any]:
         """Grant permissions to a user for a project"""
+        permissions = PermissionService._convert_permissions_to_list(permissions)
+        
         # Check if user exists
         from services.user_service import UserService
         user = UserService.get_user_by_id(user_id)
@@ -88,8 +134,10 @@ class PermissionService:
         return True, perm
     
     @staticmethod
-    def update_permission(project_id: str, user_id: str, permissions: List[str]) -> Tuple[bool, any]:
+    def update_permission(project_id: str, user_id: str, permissions: any) -> Tuple[bool, any]:
         """Update user's permissions for a project"""
+        permissions = PermissionService._convert_permissions_to_list(permissions)
+        
         all_permissions = JSONStorage.get_list(config.PERMISSIONS_FILE, 'permissions')
         
         for p in all_permissions:

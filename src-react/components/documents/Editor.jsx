@@ -40,6 +40,8 @@ function Editor() {
   const [lastSaved, setLastSaved] = useState(null);
   const [isViewMode, setIsViewMode] = useState(true); // Default to view mode
   const [isQuillLoaded, setIsQuillLoaded] = useState(isImageResizeRegistered);
+  const [lockInfo, setLockInfo] = useState(null);
+  const heartbeatIntervalRef = useRef(null);
 
   // States for comments and history feature
   const [activeTab, setActiveTab] = useState('comments');
@@ -829,6 +831,7 @@ function Editor() {
         setIsViewMode(true); // Always start in view mode for NEW documents
         setHasChanges(false);
         setLastSaved(currentDocument.updated_at);
+        setLockInfo(currentDocument.lock_info || null);
         
         // Convert Quill delta to string or use as is
         const docContent = currentDocument.content;
@@ -939,6 +942,71 @@ function Editor() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Poll lock status in view mode
+  useEffect(() => {
+    let pollInterval = null;
+    
+    const fetchLockStatus = async () => {
+      if (!currentProject || !currentDocument) return;
+      try {
+        const res = await documentsApi.getLockStatus(currentProject.id, currentDocument.id);
+        if (res.success) {
+          setLockInfo(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to get lock status:', err);
+      }
+    };
+
+    if (isViewMode && currentProject && currentDocument) {
+      // Poll every 10 seconds
+      pollInterval = setInterval(fetchLockStatus, 10000);
+    }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [isViewMode, currentProject, currentDocument]);
+
+  // Heartbeat and cleanup in edit mode
+  useEffect(() => {
+    if (isViewMode || !currentProject || !currentDocument) {
+      stopHeartbeat();
+      return;
+    }
+
+    const sendHeartbeat = async () => {
+      try {
+        const res = await documentsApi.heartbeatLock(currentProject.id, currentDocument.id);
+        if (!res.success) {
+          error('Khóa chỉnh sửa của bạn đã hết hạn hoặc bị người khác chiếm quyền. Quay lại chế độ xem.');
+          setIsViewMode(true);
+          setLockInfo(null);
+        }
+      } catch (err) {
+        console.error('Lock heartbeat failed:', err);
+        if (err.response?.status === 400 || err.response?.status === 403) {
+          error('Phiên chỉnh sửa của bạn đã hết hạn. Quay lại chế độ xem.');
+          setIsViewMode(true);
+          setLockInfo(null);
+        }
+      }
+    };
+
+    heartbeatIntervalRef.current = setInterval(sendHeartbeat, 30000);
+
+    return () => {
+      stopHeartbeat();
+    };
+  }, [isViewMode, currentProject, currentDocument, error]);
+
+  const stopHeartbeat = () => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+  };
+
   // Cập nhật thẻ tiêu đề trình duyệt (Browser Tab Title)
   useEffect(() => {
     if (title) {
@@ -991,6 +1059,10 @@ function Editor() {
         setHasChanges(false);
         setLastSaved(new Date().toISOString());
         if (!isAutoSave) {
+          try {
+            await documentsApi.releaseLock(currentProject.id, currentDocument.id);
+          } catch (e) {}
+          setLockInfo(null);
           success('Đã lưu');
         }
       } else {
@@ -1087,33 +1159,59 @@ function Editor() {
   }
 
   // Switch to edit mode
-  const handleStartEdit = () => {
-    if (!canEdit) return;
-    setIsViewMode(false);
+  const handleStartEdit = async () => {
+    if (!canEdit || !currentProject || !currentDocument) return;
     
-    // Cập nhật state trực tiếp để ReactQuill nhận giá trị ngay khi mount
-    if (currentDocument?.content) {
-      setContent(currentDocument.content);
-    }
-    
-    // Load content into Quill
-    setTimeout(() => {
-      if (quillRef.current && currentDocument?.content) {
-        const editor = quillRef.current.getEditor();
-        if (typeof currentDocument.content === 'object' && currentDocument.content.ops) {
-          editor.setContents(currentDocument.content);
+    try {
+      const res = await documentsApi.acquireLock(currentProject.id, currentDocument.id);
+      if (res.success) {
+        setLockInfo(res.data);
+        setIsViewMode(false);
+        
+        // Cập nhật state trực tiếp để ReactQuill nhận giá trị ngay khi mount
+        if (currentDocument?.content) {
+          setContent(currentDocument.content);
         }
+        
+        // Load content into Quill
+        setTimeout(() => {
+          if (quillRef.current && currentDocument?.content) {
+            const editor = quillRef.current.getEditor();
+            if (typeof currentDocument.content === 'object' && currentDocument.content.ops) {
+              editor.setContents(currentDocument.content);
+            }
+          }
+        }, 300);
+      } else {
+        error(res.error?.message || 'Không thể khóa tài liệu chỉnh sửa');
+        try {
+          const statusRes = await documentsApi.getLockStatus(currentProject.id, currentDocument.id);
+          if (statusRes.success) setLockInfo(statusRes.data);
+        } catch (e) {}
       }
-    }, 300);
+    } catch (err) {
+      error(err.response?.data?.error?.message || 'Không thể bắt đầu chỉnh sửa. Tài liệu có thể đang bị khóa bởi người khác.');
+      try {
+        const statusRes = await documentsApi.getLockStatus(currentProject.id, currentDocument.id);
+        if (statusRes.success) setLockInfo(statusRes.data);
+      } catch (e) {}
+    }
   };
 
   // Cancel edit and go back to view mode
-  const handleCancelEdit = () => {
+  const handleCancelEdit = async () => {
     if (hasChanges) {
       if (!window.confirm('Bạn có thay đổi chưa lưu. Bạn có chắc muốn hủy?')) {
         return;
       }
     }
+    
+    // Release lock
+    try {
+      await documentsApi.releaseLock(currentProject.id, currentDocument.id);
+    } catch (e) {}
+    setLockInfo(null);
+
     setIsViewMode(true);
     setHasChanges(false);
     // Reset content
@@ -1232,10 +1330,11 @@ function Editor() {
 
             {canEdit && (
               <Button
-                variant="primary"
+                variant={lockInfo && lockInfo.locked_by !== user?.id ? "secondary" : "primary"}
                 size="sm"
                 onClick={handleStartEdit}
-                title="Chỉnh sửa tài liệu"
+                disabled={!!(lockInfo && lockInfo.locked_by !== user?.id)}
+                title={lockInfo && lockInfo.locked_by !== user?.id ? `Đang bị khóa chỉnh sửa bởi ${lockInfo.locked_by_name}` : "Chỉnh sửa tài liệu"}
               >
                 <Edit className="w-4 h-4 sm:mr-1" />
                 <span className="hidden sm:inline">Chỉnh sửa</span>
@@ -1247,6 +1346,15 @@ function Editor() {
         {/* View Mode Content */}
         <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950">
           <div className="max-w-4xl mx-auto p-4 sm:p-8 min-h-full flex flex-col gap-6">
+            {lockInfo && lockInfo.locked_by !== user?.id && (
+              <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 rounded-2xl p-4 flex items-center gap-3 text-rose-800 dark:text-rose-300 shadow-sm shrink-0">
+                <Lock className="w-5 h-5 shrink-0 text-rose-500" />
+                <div className="text-sm">
+                  Tài liệu này đang được chỉnh sửa bởi <strong className="font-semibold">{lockInfo.locked_by_name}</strong> (khóa bắt đầu lúc {new Date(lockInfo.locked_at).toLocaleTimeString('vi-VN')} ngày {new Date(lockInfo.locked_at).toLocaleDateString('vi-VN')}). 
+                  <span className="block text-xs text-rose-500/80 dark:text-rose-450/80 mt-0.5">Bạn chỉ có thể xem nội dung trong lúc này. Khóa sẽ tự động hết hạn nếu họ không hoạt động.</span>
+                </div>
+              </div>
+            )}
             <article 
               className="flex-1 prose prose-slate dark:prose-invert max-w-none bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-10 shadow-sm border border-slate-200 dark:border-slate-800"
               dangerouslySetInnerHTML={{ __html: htmlContent || '<p class="text-slate-400">Tài liệu trống</p>' }}

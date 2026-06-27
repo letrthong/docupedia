@@ -127,7 +127,7 @@ function ProjectsManagePage() {
     try {
       const response = await projectsApi.addPermission(
         permModal.project.id,
-        parseInt(selectedUser),
+        selectedUser,
         newPermissions
       );
       if (response.success) {
@@ -187,7 +187,7 @@ function ProjectsManagePage() {
 
   // Get users not in project
   const availableUsers = users.filter(
-    (u) => !projectPermissions.some((p) => p.user_id === u.id)
+    (u) => !projectPermissions.some((p) => String(p.user_id) === String(u.id))
   );
 
   // Filter projects

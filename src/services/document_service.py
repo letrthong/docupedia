@@ -1,6 +1,7 @@
 import os
 import sys
 from typing import List, Dict, Tuple, Optional
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -13,10 +14,105 @@ config = get_config_doupedia()
 
 class DocumentService:
     """Document management service"""
+    _locks = {}  # In-memory document locks: key (project_id, doc_id) -> lock_info dict
     
     @staticmethod
     def _get_docs_dir(project_id: str) -> str:
         return os.path.join(config.PROJECTS_DATA_DIR, project_id, 'docs')
+        
+    @staticmethod
+    def acquire_lock(project_id: str, doc_id: str, user_id: str) -> Tuple[bool, Dict]:
+        """Acquire lock on a document. Returns (success, lock_info_or_error_details)"""
+        DocumentService._cleanup_expired_locks()
+
+        key = (project_id, doc_id)
+        current_time = datetime.utcnow()
+        lock_duration = timedelta(minutes=5)
+        max_session_duration = timedelta(minutes=30)
+
+        # Get user details for lock info
+        user = JSONStorage.find_in_list(config.USERS_FILE, 'users', user_id)
+        username = user.get('display_name') or user.get('username') if user else 'Unknown'
+
+        # If already locked
+        if key in DocumentService._locks:
+            existing_lock = DocumentService._locks[key]
+            
+            # Check if this lock has exceeded the max 30 minutes session limit
+            if current_time - existing_lock['locked_at'] >= max_session_duration:
+                # Expire it now
+                del DocumentService._locks[key]
+                return False, {
+                    'error_code': 'LOCK_SESSION_EXPIRED',
+                    'message': 'Thời gian chỉnh sửa tối đa đã hết (30 phút). Tài liệu đã được tự động mở khóa.'
+                }
+
+            # If locked by someone else
+            if existing_lock['locked_by'] != user_id:
+                return False, {
+                    'error_code': 'DOCUMENT_LOCKED',
+                    'locked_by': existing_lock['locked_by'],
+                    'locked_by_name': existing_lock['locked_by_name'],
+                    'locked_at': existing_lock['locked_at'].isoformat() + 'Z',
+                    'expires_at': existing_lock['expires_at'].isoformat() + 'Z'
+                }
+
+            # If locked by same user, extend the duration
+            existing_lock['expires_at'] = current_time + lock_duration
+            lock_info = existing_lock
+        else:
+            # Create a brand new lock
+            lock_info = {
+                'locked_by': user_id,
+                'locked_by_name': username,
+                'locked_at': current_time,
+                'expires_at': current_time + lock_duration
+            }
+            DocumentService._locks[key] = lock_info
+
+        return True, {
+            'locked_by': lock_info['locked_by'],
+            'locked_by_name': lock_info['locked_by_name'],
+            'locked_at': lock_info['locked_at'].isoformat() + 'Z',
+            'expires_at': lock_info['expires_at'].isoformat() + 'Z'
+        }
+
+    @staticmethod
+    def release_lock(project_id: str, doc_id: str, user_id: str) -> bool:
+        """Release lock on a document"""
+        key = (project_id, doc_id)
+        if key in DocumentService._locks:
+            # Releasing is allowed if it's the owner or admin (user role check can be bypassed here since route handles auth)
+            if DocumentService._locks[key]['locked_by'] == user_id:
+                del DocumentService._locks[key]
+                return True
+        return False
+
+    @staticmethod
+    def get_lock_info(project_id: str, doc_id: str) -> Optional[Dict]:
+        """Get current active lock info on a document"""
+        DocumentService._cleanup_expired_locks()
+        key = (project_id, doc_id)
+        if key in DocumentService._locks:
+            lock_info = DocumentService._locks[key]
+            return {
+                'locked_by': lock_info['locked_by'],
+                'locked_by_name': lock_info['locked_by_name'],
+                'locked_at': lock_info['locked_at'].isoformat() + 'Z',
+                'expires_at': lock_info['expires_at'].isoformat() + 'Z'
+            }
+        return None
+
+    @staticmethod
+    def _cleanup_expired_locks():
+        """Remove all expired locks"""
+        current_time = datetime.utcnow()
+        expired_keys = []
+        for k, v in DocumentService._locks.items():
+            if v['expires_at'] <= current_time or current_time - v['locked_at'] >= timedelta(minutes=30):
+                expired_keys.append(k)
+        for k in expired_keys:
+            del DocumentService._locks[k]
     
     @staticmethod
     def get_all_documents(project_id: str) -> List[Dict]:
@@ -86,6 +182,13 @@ class DocumentService:
     @staticmethod
     def update_document(project_id: str, doc_id: str, data: Dict, user_id: str) -> Tuple[bool, any]:
         """Update document"""
+        # Check lock
+        lock_info = DocumentService.get_lock_info(project_id, doc_id)
+        if not lock_info:
+            return False, "Khóa chỉnh sửa của bạn đã hết hạn hoặc không tồn tại. Vui lòng bắt đầu lại."
+        if lock_info['locked_by'] != user_id:
+            return False, f"Tài liệu đang bị khóa chỉnh sửa bởi {lock_info['locked_by_name']}"
+
         docs_dir = DocumentService._get_docs_dir(project_id)
         filepath = os.path.join(docs_dir, f'{doc_id}.json')
         

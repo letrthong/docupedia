@@ -48,6 +48,9 @@ def get_document(project_id, doc_id):
     document = DocumentService.get_document(project_id, doc_id)
     if not document:
         return error_response('Không tìm thấy tài liệu', 'NOT_FOUND', 404)
+        
+    lock_info = DocumentService.get_lock_info(project_id, doc_id)
+    document['lock_info'] = lock_info
     return success_response(document)
 
 
@@ -278,3 +281,85 @@ def get_document_history(project_id, doc_id):
         
     history = DocumentService.get_history(project_id, doc_id)
     return success_response(history)
+
+
+@projects_bp.route('/<project_id>/documents/<doc_id>/lock', methods=['GET'])
+@optional_auth
+def get_document_lock_status(project_id, doc_id):
+    """GET /api/v1/projects/:projectId/documents/:id/lock - Get document lock status"""
+    project = ProjectService.get_project_by_id(project_id)
+    if not project:
+        return error_response('Không tìm thấy dự án', 'NOT_FOUND', 404)
+        
+    lock_info = DocumentService.get_lock_info(project_id, doc_id)
+    return success_response(lock_info)
+
+
+@projects_bp.route('/<project_id>/documents/<doc_id>/lock', methods=['POST'])
+@require_auth
+def lock_document(project_id, doc_id):
+    """POST /api/v1/projects/:projectId/documents/:id/lock - Lock a document for editing"""
+    user = get_current_user()
+    
+    permissions = get_user_permissions(user['id'], project_id, user.get('role'))
+    if 'edit' not in permissions:
+        return error_response('Không có quyền chỉnh sửa', 'PERMISSION_DENIED', 403)
+        
+    success, lock_info = DocumentService.acquire_lock(project_id, doc_id, user['id'])
+    if success:
+        return success_response(lock_info, 'Khóa tài liệu thành công')
+    else:
+        from flask import jsonify
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'DOCUMENT_LOCKED',
+                'message': f"Tài liệu đang bị khóa chỉnh sửa bởi {lock_info['locked_by_name']}",
+                'lock_info': lock_info
+            }
+        }), 409
+
+
+@projects_bp.route('/<project_id>/documents/<doc_id>/unlock', methods=['POST'])
+@require_auth
+def unlock_document(project_id, doc_id):
+    """POST /api/v1/projects/:projectId/documents/:id/unlock - Release document edit lock"""
+    user = get_current_user()
+    
+    permissions = get_user_permissions(user['id'], project_id, user.get('role'))
+    if 'edit' not in permissions:
+        return error_response('Không có quyền chỉnh sửa', 'PERMISSION_DENIED', 403)
+        
+    is_admin = user.get('role') == 'admin' or 'manage' in permissions
+    
+    lock_info = DocumentService.get_lock_info(project_id, doc_id)
+    if not lock_info:
+        return success_response(None, 'Tài liệu không bị khóa')
+        
+    if lock_info['locked_by'] == user['id'] or is_admin:
+        DocumentService.release_lock(project_id, doc_id, lock_info['locked_by'])
+        return success_response(None, 'Mở khóa tài liệu thành công')
+        
+    return error_response('Bạn không có quyền mở khóa tài liệu này', 'PERMISSION_DENIED', 403)
+
+
+@projects_bp.route('/<project_id>/documents/<doc_id>/heartbeat', methods=['POST'])
+@require_auth
+def heartbeat_document_lock(project_id, doc_id):
+    """POST /api/v1/projects/:projectId/documents/:id/heartbeat - Refresh document edit lock"""
+    user = get_current_user()
+    
+    lock_info = DocumentService.get_lock_info(project_id, doc_id)
+    if not lock_info:
+        return error_response('Tài liệu không bị khóa hoặc khóa đã hết hạn', 'LOCK_EXPIRED', 400)
+        
+    if lock_info['locked_by'] != user['id']:
+        return error_response('Khóa thuộc về người dùng khác', 'PERMISSION_DENIED', 403)
+        
+    success, result = DocumentService.acquire_lock(project_id, doc_id, user['id'])
+    if success:
+        return success_response(result, 'Gia hạn khóa thành công')
+    else:
+        if isinstance(result, dict) and result.get('error_code') == 'LOCK_SESSION_EXPIRED':
+            return error_response(result['message'], 'LOCK_SESSION_EXPIRED', 403)
+        return error_response('Không thể gia hạn khóa', 'HEARTBEAT_FAILED', 400)

@@ -65,6 +65,26 @@ const documentsApi = {
   getHistory: async (projectId, docId) => {
     return client.get(`/projects/${projectId}/documents/${docId}/history`);
   },
+
+  // Get document lock status
+  getLockStatus: async (projectId, docId) => {
+    return client.get(`/projects/${projectId}/documents/${docId}/lock`);
+  },
+
+  // Acquire edit lock on document
+  acquireLock: async (projectId, docId) => {
+    return client.post(`/projects/${projectId}/documents/${docId}/lock`);
+  },
+
+  // Release edit lock on document
+  releaseLock: async (projectId, docId) => {
+    return client.post(`/projects/${projectId}/documents/${docId}/unlock`);
+  },
+
+  // Heartbeat lock refresh
+  heartbeatLock: async (projectId, docId) => {
+    return client.post(`/projects/${projectId}/documents/${docId}/heartbeat`);
+  },
 };
 
 export default documentsApi;

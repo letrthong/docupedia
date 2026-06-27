@@ -128,6 +128,10 @@ def add_project_permission(project_id):
         return error_response('Bạn không có quyền thêm permissions', 'PERMISSION_DENIED', 403)
     
     data = request.get_json()
+    if data and 'permissions' in data:
+        from services.permission_service import PermissionService
+        data['permissions'] = PermissionService._convert_permissions_to_list(data['permissions'])
+        
     is_valid, error = validate_permission(data)
     if not is_valid:
         return error_response(error, 'VALIDATION_ERROR', 400)
@@ -156,6 +160,10 @@ def update_project_permission(project_id, user_id):
         return error_response('Bạn không có quyền sửa permissions', 'PERMISSION_DENIED', 403)
     
     data = request.get_json()
+    if data and 'permissions' in data:
+        from services.permission_service import PermissionService
+        data['permissions'] = PermissionService._convert_permissions_to_list(data['permissions'])
+        
     success, result = PermissionService.update_permission(
         project_id, user_id, data.get('permissions', [])
     )
