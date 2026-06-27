@@ -21,6 +21,7 @@ export function ProjectProvider({ children }) {
       const response = await projectsApi.getAll();
       if (response.success) {
         const projectList = response.data || [];
+        projectList.sort((a, b) => a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' }));
         setProjects(projectList);
         
         // Restore saved project on first load only

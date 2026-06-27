@@ -28,7 +28,9 @@ function ProjectsManagePage() {
     try {
       const response = await projectsApi.getAll();
       if (response.success) {
-        setProjects(response.data || []);
+        const projectList = response.data || [];
+        projectList.sort((a, b) => a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' }));
+        setProjects(projectList);
       }
     } catch (err) {
       showError('Không thể tải danh sách dự án');
