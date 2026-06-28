@@ -9,6 +9,18 @@
       ],
       "granted_by": "user_admin",
       "granted_at": "2026-06-02T09:15:08.948546Z"
+    },
+    {
+      "id": "perm_1782553321504",
+      "user_id": "user_1782552320645",
+      "project_id": "proj_1781341583259",
+      "permissions": [
+        "edit",
+        "view",
+        "create"
+      ],
+      "granted_by": "user_admin",
+      "granted_at": "2026-06-27T09:42:01.504741Z"
     }
   ]
 }

@@ -309,12 +309,15 @@ def lock_document(project_id, doc_id):
     if success:
         return success_response(lock_info, 'Khóa tài liệu thành công')
     else:
+        if isinstance(lock_info, dict) and lock_info.get('error_code') == 'LOCK_SESSION_EXPIRED':
+            return error_response(lock_info['message'], 'LOCK_SESSION_EXPIRED', 403)
+            
         from flask import jsonify
         return jsonify({
             'success': False,
             'error': {
                 'code': 'DOCUMENT_LOCKED',
-                'message': f"Tài liệu đang bị khóa chỉnh sửa bởi {lock_info['locked_by_name']}",
+                'message': f"Tài liệu đang bị khóa chỉnh sửa bởi {lock_info.get('locked_by_name', 'người khác')}",
                 'lock_info': lock_info
             }
         }), 409

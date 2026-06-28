@@ -28,7 +28,12 @@ class DocumentService:
         key = (project_id, doc_id)
         current_time = datetime.utcnow()
         lock_duration = timedelta(minutes=5)
-        max_session_duration = timedelta(minutes=30)
+        
+        # Load custom max session duration from settings.json or default to 30
+        settings_file = os.path.join(config.ROOT_DATABASE_DIR, 'settings.json')
+        settings = JSONStorage.read(settings_file)
+        max_minutes = settings.get('max_session_duration_minutes', 30)
+        max_session_duration = timedelta(minutes=max_minutes)
 
         # Get user details for lock info
         user = JSONStorage.find_in_list(config.USERS_FILE, 'users', user_id)
@@ -38,13 +43,13 @@ class DocumentService:
         if key in DocumentService._locks:
             existing_lock = DocumentService._locks[key]
             
-            # Check if this lock has exceeded the max 30 minutes session limit
+            # Check if this lock has exceeded the max session limit
             if current_time - existing_lock['locked_at'] >= max_session_duration:
                 # Expire it now
                 del DocumentService._locks[key]
                 return False, {
                     'error_code': 'LOCK_SESSION_EXPIRED',
-                    'message': 'Thời gian chỉnh sửa tối đa đã hết (30 phút). Tài liệu đã được tự động mở khóa.'
+                    'message': f'Thời gian chỉnh sửa tối đa đã hết ({max_minutes} phút). Tài liệu đã được tự động mở khóa.'
                 }
 
             # If locked by someone else
@@ -70,11 +75,13 @@ class DocumentService:
             }
             DocumentService._locks[key] = lock_info
 
+        session_expires_at = lock_info['locked_at'] + max_session_duration
         return True, {
             'locked_by': lock_info['locked_by'],
             'locked_by_name': lock_info['locked_by_name'],
             'locked_at': lock_info['locked_at'].isoformat() + 'Z',
-            'expires_at': lock_info['expires_at'].isoformat() + 'Z'
+            'expires_at': lock_info['expires_at'].isoformat() + 'Z',
+            'session_expires_at': session_expires_at.isoformat() + 'Z'
         }
 
     @staticmethod
@@ -95,11 +102,20 @@ class DocumentService:
         key = (project_id, doc_id)
         if key in DocumentService._locks:
             lock_info = DocumentService._locks[key]
+            
+            # Load custom max session duration from settings.json or default to 30
+            settings_file = os.path.join(config.ROOT_DATABASE_DIR, 'settings.json')
+            settings = JSONStorage.read(settings_file)
+            max_minutes = settings.get('max_session_duration_minutes', 30)
+            max_session_duration = timedelta(minutes=max_minutes)
+            session_expires_at = lock_info['locked_at'] + max_session_duration
+
             return {
                 'locked_by': lock_info['locked_by'],
                 'locked_by_name': lock_info['locked_by_name'],
                 'locked_at': lock_info['locked_at'].isoformat() + 'Z',
-                'expires_at': lock_info['expires_at'].isoformat() + 'Z'
+                'expires_at': lock_info['expires_at'].isoformat() + 'Z',
+                'session_expires_at': session_expires_at.isoformat() + 'Z'
             }
         return None
 
@@ -108,8 +124,15 @@ class DocumentService:
         """Remove all expired locks"""
         current_time = datetime.utcnow()
         expired_keys = []
+        
+        # Load custom max session duration from settings.json or default to 30
+        settings_file = os.path.join(config.ROOT_DATABASE_DIR, 'settings.json')
+        settings = JSONStorage.read(settings_file)
+        max_minutes = settings.get('max_session_duration_minutes', 30)
+        max_session_duration = timedelta(minutes=max_minutes)
+
         for k, v in DocumentService._locks.items():
-            if v['expires_at'] <= current_time or current_time - v['locked_at'] >= timedelta(minutes=30):
+            if v['expires_at'] <= current_time or current_time - v['locked_at'] >= max_session_duration:
                 expired_keys.append(k)
         for k in expired_keys:
             del DocumentService._locks[k]

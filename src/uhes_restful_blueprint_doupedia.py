@@ -10,10 +10,10 @@ if DOCUPEDIA_SRC_DIR not in sys.path:
 from services.auth_service import init_default_admin
 
 # Bắt buộc import các file route handlers để logic được đính kèm vào các blueprints
-from routes import auth, users, projects, permissions, documents, folders, tree
+from routes import auth, users, projects, permissions, documents, folders, tree, settings
 from routes import (
     auth_bp, users_bp, projects_bp, permissions_bp,
-    documents_bp, folders_bp, tree_bp
+    documents_bp, folders_bp, tree_bp, settings_bp
 )
 
 # Khởi tạo Blueprint cha (Unified Blueprint) chứa toàn bộ API
@@ -36,6 +36,7 @@ docupedia_bp.register_blueprint(permissions_bp, url_prefix='/projects')
 docupedia_bp.register_blueprint(documents_bp, url_prefix='/projects')
 docupedia_bp.register_blueprint(folders_bp, url_prefix='/projects')
 docupedia_bp.register_blueprint(tree_bp, url_prefix='/projects')
+docupedia_bp.register_blueprint(settings_bp, url_prefix='/settings')
 
 def init_docupedia_db():
     """Khởi tạo dữ liệu và tài khoản admin mặc định"""

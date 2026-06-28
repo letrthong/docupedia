@@ -41,7 +41,14 @@ function Editor() {
   const [isViewMode, setIsViewMode] = useState(true); // Default to view mode
   const [isQuillLoaded, setIsQuillLoaded] = useState(isImageResizeRegistered);
   const [lockInfo, setLockInfo] = useState(null);
+  const [lockTimeLeft, setLockTimeLeft] = useState(0);
   const heartbeatIntervalRef = useRef(null);
+
+  const formatTimeLeft = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
 
   // States for comments and history feature
   const [activeTab, setActiveTab] = useState('comments');
@@ -978,14 +985,16 @@ function Editor() {
     const sendHeartbeat = async () => {
       try {
         const res = await documentsApi.heartbeatLock(currentProject.id, currentDocument.id);
-        if (!res.success) {
+        if (res.success) {
+          setLockInfo(res.data);
+        } else {
           error('Khóa chỉnh sửa của bạn đã hết hạn hoặc bị người khác chiếm quyền. Quay lại chế độ xem.');
           setIsViewMode(true);
           setLockInfo(null);
         }
       } catch (err) {
         console.error('Lock heartbeat failed:', err);
-        if (err.response?.status === 400 || err.response?.status === 403) {
+        if (err.status === 400 || err.status === 403) {
           error('Phiên chỉnh sửa của bạn đã hết hạn. Quay lại chế độ xem.');
           setIsViewMode(true);
           setLockInfo(null);
@@ -1006,6 +1015,33 @@ function Editor() {
       heartbeatIntervalRef.current = null;
     }
   };
+
+  // Đếm ngược thời gian hết hạn khóa
+  useEffect(() => {
+    if (isViewMode || !lockInfo) {
+      setLockTimeLeft(0);
+      return;
+    }
+
+    const calculateTimeLeft = () => {
+      const targetTimeStr = lockInfo.session_expires_at || lockInfo.expires_at;
+      const targetTime = new Date(targetTimeStr).getTime();
+      const now = new Date().getTime();
+      const diff = Math.max(0, Math.floor((targetTime - now) / 1000));
+      setLockTimeLeft(diff);
+      
+      if (diff <= 0) {
+        error('Phiên chỉnh sửa của bạn đã hết hạn.');
+        setIsViewMode(true);
+        setLockInfo(null);
+      }
+    };
+
+    calculateTimeLeft();
+    const timer = setInterval(calculateTimeLeft, 1000);
+
+    return () => clearInterval(timer);
+  }, [lockInfo, isViewMode, error]);
 
   // Cập nhật thẻ tiêu đề trình duyệt (Browser Tab Title)
   useEffect(() => {
@@ -1033,14 +1069,15 @@ function Editor() {
   };
 
   const handleSave = async (isAutoSave = false) => {
-    if (!currentDocument || !canEdit || isSaving) return;
+    if (!currentDocument || !canEdit || isSaving) return false;
     
     if (!isAutoSave && !hasChanges) {
       success('Tài liệu đã được lưu');
-      return;
+      return true;
     }
 
     setIsSaving(true);
+    let isSuccess = false;
 
     try {
       // Get content as Quill delta
@@ -1059,12 +1096,9 @@ function Editor() {
         setHasChanges(false);
         setLastSaved(new Date().toISOString());
         if (!isAutoSave) {
-          try {
-            await documentsApi.releaseLock(currentProject.id, currentDocument.id);
-          } catch (e) {}
-          setLockInfo(null);
           success('Đã lưu');
         }
+        isSuccess = true;
       } else {
         error(result.error || 'Không thể lưu');
       }
@@ -1073,6 +1107,7 @@ function Editor() {
     }
 
     setIsSaving(false);
+    return isSuccess;
   };
 
   useEffect(() => {
@@ -1190,7 +1225,7 @@ function Editor() {
         } catch (e) {}
       }
     } catch (err) {
-      error(err.response?.data?.error?.message || 'Không thể bắt đầu chỉnh sửa. Tài liệu có thể đang bị khóa bởi người khác.');
+      error(err.message || 'Không thể bắt đầu chỉnh sửa. Tài liệu có thể đang bị khóa bởi người khác.');
       try {
         const statusRes = await documentsApi.getLockStatus(currentProject.id, currentDocument.id);
         if (statusRes.success) setLockInfo(statusRes.data);
@@ -1429,8 +1464,8 @@ function Editor() {
             <span className="text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-1 rounded-lg">Chưa lưu</span>
           )}
 
-          <span className="hidden sm:inline text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-2 py-1 rounded-full font-medium">
-            Đang chỉnh sửa
+          <span className={`hidden sm:inline text-xs px-2 py-1 rounded-full font-medium ${lockTimeLeft > 0 && lockTimeLeft < 60 ? 'bg-rose-105/90 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 font-bold border border-rose-200 dark:border-rose-900/50 animate-pulse' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'}`}>
+            Đang chỉnh sửa {lockTimeLeft > 0 && `(Hết hạn sau: ${formatTimeLeft(lockTimeLeft)})`}
           </span>
 
           {currentProject?.is_public && (
@@ -1476,12 +1511,18 @@ function Editor() {
               variant="primary"
               size="sm"
               onClick={async () => {
-                await handleSave();
-                // Update HTML for view mode
-                if (quillRef.current) {
-                  setHtmlContent(quillRef.current.getEditor().root.innerHTML);
+                const saved = await handleSave();
+                if (saved) {
+                  try {
+                    await documentsApi.releaseLock(currentProject.id, currentDocument.id);
+                  } catch (e) {}
+                  setLockInfo(null);
+                  // Update HTML for view mode
+                  if (quillRef.current) {
+                    setHtmlContent(quillRef.current.getEditor().root.innerHTML);
+                  }
+                  setIsViewMode(true);
                 }
-                setIsViewMode(true);
               }}
               isLoading={isSaving}
               title="Lưu & Đóng"

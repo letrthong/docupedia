@@ -90,6 +90,7 @@ class ConfigDoupedia:
     DATA_DIR = str(DATA_DIR)
     
     # JSON file paths
+    ROOT_DATABASE_DIR = str(ROOT_DATABASE_DIR)
     USERS_FILE = str(USERS_FILE)
     PROJECTS_FILE = str(PROJECTS_FILE)
     PERMISSIONS_FILE = str(PERMISSIONS_FILE)

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Lock, User, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Button, Input } from '../components/common';
+import { settingsApi } from '../api';
 
 function SettingsPage() {
   const { user, changePassword } = useAuth();
@@ -15,6 +16,46 @@ function SettingsPage() {
   const [errors, setErrors] = useState({});
   const [enableAutoSave, setEnableAutoSave] = useState(localStorage.getItem('enableAutoSave') === 'true');
   const [autoSaveInterval, setAutoSaveInterval] = useState(parseInt(localStorage.getItem('autoSaveInterval')) || 3);
+  const [maxSessionDuration, setMaxSessionDuration] = useState(30);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  
+  const isAdmin = user?.role === 'admin';
+
+  // Fetch settings on mount if admin
+  useEffect(() => {
+    if (isAdmin) {
+      const fetchSettings = async () => {
+        try {
+          const res = await settingsApi.get();
+          if (res.success && res.data) {
+            setMaxSessionDuration(res.data.max_session_duration_minutes || 30);
+          }
+        } catch (e) {
+          console.error('Failed to fetch system settings:', e);
+        }
+      };
+      fetchSettings();
+    }
+  }, [isAdmin]);
+
+  const handleMaxSessionDurationChange = (e) => {
+    setMaxSessionDuration(parseInt(e.target.value));
+  };
+
+  const handleSaveSystemSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      const res = await settingsApi.update({ max_session_duration_minutes: maxSessionDuration });
+      if (res.success) {
+        success('Đã lưu cấu hình hệ thống thành công');
+      } else {
+        showError(res.error || 'Không thể lưu cấu hình');
+      }
+    } catch (e) {
+      showError(e.message || 'Có lỗi xảy ra khi lưu cấu hình');
+    }
+    setIsSavingSettings(false);
+  };
 
   const handleToggleAutoSave = (e) => {
     const checked = e.target.checked;
@@ -169,6 +210,46 @@ function SettingsPage() {
           )}
         </div>
       </div>
+
+      {/* Cấu hình hệ thống (Admin only) */}
+      {isAdmin && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Settings className="w-5 h-5 text-gray-500" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Cấu hình hệ thống (Admin)
+            </h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-gray-900 dark:text-white">
+                Thời gian chỉnh sửa tối đa cho mỗi phiên:
+              </label>
+              <select
+                value={maxSessionDuration}
+                onChange={handleMaxSessionDurationChange}
+                disabled={isSavingSettings}
+                className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value={15}>15 phút</option>
+                <option value={30}>30 phút</option>
+                <option value={60}>60 phút</option>
+              </select>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Sau thời gian này, khóa chỉnh sửa tài liệu sẽ tự động giải phóng để người khác có thể sửa.
+              </span>
+            </div>
+
+            <Button
+              onClick={handleSaveSystemSettings}
+              isLoading={isSavingSettings}
+            >
+              Lưu cấu hình hệ thống
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Change Password */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
