@@ -14,8 +14,61 @@ config = get_config_doupedia()
 
 class DocumentService:
     """Document management service"""
-    _locks = {}  # In-memory document locks: key (project_id, doc_id) -> lock_info dict
-    
+    @staticmethod
+    def _get_locks_filepath() -> str:
+        return os.path.join(config.ROOT_DATABASE_DIR, 'locks.json')
+
+    @staticmethod
+    def _read_locks() -> Dict[str, Dict]:
+        filepath = DocumentService._get_locks_filepath()
+        locks = JSONStorage.read(filepath)
+        parsed_locks = {}
+        for k, v in locks.items():
+            try:
+                parsed_locks[k] = {
+                    'locked_by': v['locked_by'],
+                    'locked_by_name': v['locked_by_name'],
+                    'locked_at': datetime.fromisoformat(v['locked_at'].replace('Z', '')),
+                    'expires_at': datetime.fromisoformat(v['expires_at'].replace('Z', ''))
+                }
+            except Exception:
+                pass
+        return parsed_locks
+
+    @staticmethod
+    def _write_locks(locks: Dict[str, Dict]) -> None:
+        filepath = DocumentService._get_locks_filepath()
+        serialized_locks = {}
+        for k, v in locks.items():
+            serialized_locks[k] = {
+                'locked_by': v['locked_by'],
+                'locked_by_name': v['locked_by_name'],
+                'locked_at': v['locked_at'].isoformat() + 'Z' if isinstance(v['locked_at'], datetime) else v['locked_at'],
+                'expires_at': v['expires_at'].isoformat() + 'Z' if isinstance(v['expires_at'], datetime) else v['expires_at']
+            }
+        JSONStorage.write(filepath, serialized_locks)
+
+    @staticmethod
+    def _cleanup_expired_locks() -> Dict[str, Dict]:
+        """Remove all expired locks from file and return active locks"""
+        locks = DocumentService._read_locks()
+        current_time = datetime.utcnow()
+        expired_keys = []
+        
+        # Load custom max session duration from settings.json or default to 30
+        settings_file = os.path.join(config.ROOT_DATABASE_DIR, 'settings.json')
+        settings = JSONStorage.read(settings_file)
+        max_minutes = settings.get('max_session_duration_minutes', 30)
+        max_session_duration = timedelta(minutes=max_minutes)
+
+        for k, v in list(locks.items()):
+            if v['expires_at'] <= current_time or current_time - v['locked_at'] >= max_session_duration:
+                expired_keys.append(k)
+                del locks[k]
+        if expired_keys:
+            DocumentService._write_locks(locks)
+        return locks
+
     @staticmethod
     def _get_docs_dir(project_id: str) -> str:
         return os.path.join(config.PROJECTS_DATA_DIR, project_id, 'docs')
@@ -23,9 +76,9 @@ class DocumentService:
     @staticmethod
     def acquire_lock(project_id: str, doc_id: str, user_id: str) -> Tuple[bool, Dict]:
         """Acquire lock on a document. Returns (success, lock_info_or_error_details)"""
-        DocumentService._cleanup_expired_locks()
+        locks = DocumentService._cleanup_expired_locks()
 
-        key = (project_id, doc_id)
+        key_str = f"{project_id}:{doc_id}"
         current_time = datetime.utcnow()
         lock_duration = timedelta(minutes=5)
         
@@ -40,13 +93,14 @@ class DocumentService:
         username = user.get('display_name') or user.get('username') if user else 'Unknown'
 
         # If already locked
-        if key in DocumentService._locks:
-            existing_lock = DocumentService._locks[key]
+        if key_str in locks:
+            existing_lock = locks[key_str]
             
             # Check if this lock has exceeded the max session limit
             if current_time - existing_lock['locked_at'] >= max_session_duration:
                 # Expire it now
-                del DocumentService._locks[key]
+                del locks[key_str]
+                DocumentService._write_locks(locks)
                 return False, {
                     'error_code': 'LOCK_SESSION_EXPIRED',
                     'message': f'Thời gian chỉnh sửa tối đa đã hết ({max_minutes} phút). Tài liệu đã được tự động mở khóa.'
@@ -73,35 +127,44 @@ class DocumentService:
                 'locked_at': current_time,
                 'expires_at': current_time + lock_duration
             }
-            DocumentService._locks[key] = lock_info
+            locks[key_str] = lock_info
+
+        DocumentService._write_locks(locks)
 
         session_expires_at = lock_info['locked_at'] + max_session_duration
+        expires_in = max(0, int((lock_info['expires_at'] - current_time).total_seconds()))
+        session_expires_in = max(0, int((session_expires_at - current_time).total_seconds()))
+        
         return True, {
             'locked_by': lock_info['locked_by'],
             'locked_by_name': lock_info['locked_by_name'],
             'locked_at': lock_info['locked_at'].isoformat() + 'Z',
             'expires_at': lock_info['expires_at'].isoformat() + 'Z',
-            'session_expires_at': session_expires_at.isoformat() + 'Z'
+            'session_expires_at': session_expires_at.isoformat() + 'Z',
+            'expires_in': expires_in,
+            'session_expires_in': session_expires_in
         }
 
     @staticmethod
     def release_lock(project_id: str, doc_id: str, user_id: str) -> bool:
         """Release lock on a document"""
-        key = (project_id, doc_id)
-        if key in DocumentService._locks:
-            # Releasing is allowed if it's the owner or admin (user role check can be bypassed here since route handles auth)
-            if DocumentService._locks[key]['locked_by'] == user_id:
-                del DocumentService._locks[key]
+        locks = DocumentService._read_locks()
+        key_str = f"{project_id}:{doc_id}"
+        if key_str in locks:
+            # Releasing is allowed if it's the owner or admin
+            if locks[key_str]['locked_by'] == user_id:
+                del locks[key_str]
+                DocumentService._write_locks(locks)
                 return True
         return False
 
     @staticmethod
     def get_lock_info(project_id: str, doc_id: str) -> Optional[Dict]:
         """Get current active lock info on a document"""
-        DocumentService._cleanup_expired_locks()
-        key = (project_id, doc_id)
-        if key in DocumentService._locks:
-            lock_info = DocumentService._locks[key]
+        locks = DocumentService._cleanup_expired_locks()
+        key_str = f"{project_id}:{doc_id}"
+        if key_str in locks:
+            lock_info = locks[key_str]
             
             # Load custom max session duration from settings.json or default to 30
             settings_file = os.path.join(config.ROOT_DATABASE_DIR, 'settings.json')
@@ -110,32 +173,20 @@ class DocumentService:
             max_session_duration = timedelta(minutes=max_minutes)
             session_expires_at = lock_info['locked_at'] + max_session_duration
 
+            current_time = datetime.utcnow()
+            expires_in = max(0, int((lock_info['expires_at'] - current_time).total_seconds()))
+            session_expires_in = max(0, int((session_expires_at - current_time).total_seconds()))
+
             return {
                 'locked_by': lock_info['locked_by'],
                 'locked_by_name': lock_info['locked_by_name'],
                 'locked_at': lock_info['locked_at'].isoformat() + 'Z',
                 'expires_at': lock_info['expires_at'].isoformat() + 'Z',
-                'session_expires_at': session_expires_at.isoformat() + 'Z'
+                'session_expires_at': session_expires_at.isoformat() + 'Z',
+                'expires_in': expires_in,
+                'session_expires_in': session_expires_in
             }
         return None
-
-    @staticmethod
-    def _cleanup_expired_locks():
-        """Remove all expired locks"""
-        current_time = datetime.utcnow()
-        expired_keys = []
-        
-        # Load custom max session duration from settings.json or default to 30
-        settings_file = os.path.join(config.ROOT_DATABASE_DIR, 'settings.json')
-        settings = JSONStorage.read(settings_file)
-        max_minutes = settings.get('max_session_duration_minutes', 30)
-        max_session_duration = timedelta(minutes=max_minutes)
-
-        for k, v in DocumentService._locks.items():
-            if v['expires_at'] <= current_time or current_time - v['locked_at'] >= max_session_duration:
-                expired_keys.append(k)
-        for k in expired_keys:
-            del DocumentService._locks[k]
     
     @staticmethod
     def get_all_documents(project_id: str) -> List[Dict]:
@@ -207,9 +258,7 @@ class DocumentService:
         """Update document"""
         # Check lock
         lock_info = DocumentService.get_lock_info(project_id, doc_id)
-        if not lock_info:
-            return False, "Khóa chỉnh sửa của bạn đã hết hạn hoặc không tồn tại. Vui lòng bắt đầu lại."
-        if lock_info['locked_by'] != user_id:
+        if lock_info and lock_info['locked_by'] != user_id:
             return False, f"Tài liệu đang bị khóa chỉnh sửa bởi {lock_info['locked_by_name']}"
 
         docs_dir = DocumentService._get_docs_dir(project_id)

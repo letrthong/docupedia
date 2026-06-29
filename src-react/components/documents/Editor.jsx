@@ -950,14 +950,17 @@ function Editor() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const projectId = currentProject?.id;
+  const docId = currentDocument?.id;
+
   // Poll lock status in view mode
   useEffect(() => {
     let pollInterval = null;
     
     const fetchLockStatus = async () => {
-      if (!currentProject || !currentDocument) return;
+      if (!projectId || !docId) return;
       try {
-        const res = await documentsApi.getLockStatus(currentProject.id, currentDocument.id);
+        const res = await documentsApi.getLockStatus(projectId, docId);
         if (res.success) {
           setLockInfo(res.data);
         }
@@ -966,7 +969,7 @@ function Editor() {
       }
     };
 
-    if (isViewMode && currentProject && currentDocument) {
+    if (isViewMode && projectId && docId) {
       // Poll every 10 seconds
       pollInterval = setInterval(fetchLockStatus, 10000);
     }
@@ -974,18 +977,18 @@ function Editor() {
     return () => {
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [isViewMode, currentProject, currentDocument]);
+  }, [isViewMode, projectId, docId]);
 
   // Heartbeat and cleanup in edit mode
   useEffect(() => {
-    if (isViewMode || !currentProject || !currentDocument) {
+    if (isViewMode || !projectId || !docId) {
       stopHeartbeat();
       return;
     }
 
     const sendHeartbeat = async () => {
       try {
-        const res = await documentsApi.heartbeatLock(currentProject.id, currentDocument.id);
+        const res = await documentsApi.heartbeatLock(projectId, docId);
         if (res.success) {
           setLockInfo(res.data);
         } else {
@@ -1003,12 +1006,13 @@ function Editor() {
       }
     };
 
+    // Heartbeat every 30 seconds
     heartbeatIntervalRef.current = setInterval(sendHeartbeat, 30000);
 
     return () => {
       stopHeartbeat();
     };
-  }, [isViewMode, currentProject, currentDocument, error]);
+  }, [isViewMode, projectId, docId, error]);
 
   const stopHeartbeat = () => {
     if (heartbeatIntervalRef.current) {
@@ -1017,29 +1021,38 @@ function Editor() {
     }
   };
 
-  // Đếm ngược thời gian hết hạn khóa
+  // Đếm ngược thời gian hết hạn khóa dựa vào giây còn lại từ server
   useEffect(() => {
     if (isViewMode || !lockInfo) {
       setLockTimeLeft(0);
       return;
     }
 
-    const calculateTimeLeft = () => {
-      const targetTimeStr = lockInfo.session_expires_at || lockInfo.expires_at;
-      const targetTime = new Date(targetTimeStr).getTime();
-      const now = new Date().getTime();
-      const diff = Math.max(0, Math.floor((targetTime - now) / 1000));
-      setLockTimeLeft(diff);
+    // Lấy số giây còn lại từ server (session_expires_in là max session duration, expires_in là lock duration)
+    let timeLeft = lockInfo.session_expires_in !== undefined 
+      ? lockInfo.session_expires_in 
+      : (lockInfo.expires_in !== undefined ? lockInfo.expires_in : 1800);
+
+    setLockTimeLeft(timeLeft);
+
+    if (timeLeft <= 0) {
+      error('Phiên chỉnh sửa của bạn đã hết hạn.');
+      setIsViewMode(true);
+      setLockInfo(null);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      timeLeft = timeLeft - 1;
+      setLockTimeLeft(timeLeft);
       
-      if (diff <= 0) {
+      if (timeLeft <= 0) {
+        clearInterval(timer);
         error('Phiên chỉnh sửa của bạn đã hết hạn.');
         setIsViewMode(true);
         setLockInfo(null);
       }
-    };
-
-    calculateTimeLeft();
-    const timer = setInterval(calculateTimeLeft, 1000);
+    }, 1000);
 
     return () => clearInterval(timer);
   }, [lockInfo, isViewMode, error]);
