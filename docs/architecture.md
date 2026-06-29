@@ -591,6 +591,21 @@ Khi hệ thống khởi tạo lần đầu, tự động tạo tài khoản admi
 }
 ```
 
+### 5.9. Lock Schema (`locks.json`)
+
+Lưu trữ danh sách các khóa chỉnh sửa tài liệu (document edit locks) đang hoạt động. Nhờ lưu trữ dưới dạng file JSON tập trung, hệ thống hỗ trợ hoàn hảo cho môi trường triển khai Cloud chạy nhiều instances song song (Behind Load Balancer) cùng chia sẻ chung một ổ đĩa lưu trữ (Shared Volume).
+
+```json
+{
+  "proj_1717347200000:doc_1717347200000": {
+    "locked_by": "user_2",
+    "locked_by_name": "John Doe",
+    "locked_at": "2026-06-29T15:00:00.000000Z",
+    "expires_at": "2026-06-29T15:05:00.000000Z"
+  }
+}
+```
+
 ---
 
 ## 6. Cấu trúc Thư mục Lưu trữ JSON
@@ -600,6 +615,7 @@ docupedia_data/
 ├── users.json              # Danh sách users
 ├── projects.json           # Danh sách projects
 ├── permissions.json        # Bảng phân quyền user-project
+├── locks.json              # Khóa chỉnh sửa tài liệu (Document locks)
 ├── sessions.json           # Active sessions (optional)
 │
 └── projects/               # Thư mục chứa data từng project
