@@ -36,6 +36,7 @@ function Editor() {
   const [content, setContent] = useState('');
   const [htmlContent, setHtmlContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLocking, setIsLocking] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [isViewMode, setIsViewMode] = useState(true); // Default to view mode
@@ -1195,8 +1196,9 @@ function Editor() {
 
   // Switch to edit mode
   const handleStartEdit = async () => {
-    if (!canEdit || !currentProject || !currentDocument) return;
+    if (!canEdit || !currentProject || !currentDocument || isLocking) return;
     
+    setIsLocking(true);
     try {
       const res = await documentsApi.acquireLock(currentProject.id, currentDocument.id);
       if (res.success) {
@@ -1230,6 +1232,8 @@ function Editor() {
         const statusRes = await documentsApi.getLockStatus(currentProject.id, currentDocument.id);
         if (statusRes.success) setLockInfo(statusRes.data);
       } catch (e) {}
+    } finally {
+      setIsLocking(false);
     }
   };
 
@@ -1369,9 +1373,10 @@ function Editor() {
                 size="sm"
                 onClick={handleStartEdit}
                 disabled={!!(lockInfo && lockInfo.locked_by !== user?.id)}
+                isLoading={isLocking}
                 title={lockInfo && lockInfo.locked_by !== user?.id ? `Đang bị khóa chỉnh sửa bởi ${lockInfo.locked_by_name}` : "Chỉnh sửa tài liệu"}
               >
-                <Edit className="w-4 h-4 sm:mr-1" />
+                {!isLocking && <Edit className="w-4 h-4 sm:mr-1" />}
                 <span className="hidden sm:inline">Chỉnh sửa</span>
               </Button>
             )}
