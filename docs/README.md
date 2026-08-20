@@ -38,7 +38,7 @@ chmod +x start_docker.sh
   - **Định dạng liên kết (Web link)**: Tự động hiển thị liên kết màu xanh dương, gạch chân và in nghiêng chuẩn web.
   - **Tách rời ảnh tĩnh (WebP Media Upload)**: Tự động nén ảnh sang WebP và tải lên server lưu trữ riêng biệt, giảm 99% dung lượng JSON và chống Memory Spike cho Backend.
 - Tự động lưu (Auto-save) sau khoảng thời gian tùy chọn (mặc định 3 giây).
-- Xuất bản tài liệu dưới định dạng HTML hoặc văn bản TXT.
+- Xuất bản tài liệu dưới định dạng PDF chuẩn in ấn hoặc file HTML độc lập.
 
 ### 3. Quản lý User (Admin)
 - Tạo/sửa/xóa user

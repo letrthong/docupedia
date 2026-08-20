@@ -374,8 +374,8 @@ class DocumentService:
         return True, document
     
     @staticmethod
-    def export_document(project_id: str, doc_id: str, format_type: str) -> Tuple[bool, any]:
-        """Export document to HTML or TXT"""
+    def export_document(project_id: str, doc_id: str, format_type: str = 'html') -> Tuple[bool, any]:
+        """Export document to HTML"""
         document = DocumentService.get_document(project_id, doc_id)
         if not document:
             return False, "Không tìm thấy tài liệu"
@@ -383,20 +383,12 @@ class DocumentService:
         content = document.get('content', {})
         title = document.get('title', 'Untitled')
         
-        if format_type == 'txt':
-            text = DocumentService._delta_to_text(content)
-            return True, {
-                'filename': f'{title}.txt',
-                'content': text,
-                'mime_type': 'text/plain'
-            }
-        else:  # html
-            html = DocumentService._delta_to_html(content, title)
-            return True, {
-                'filename': f'{title}.html',
-                'content': html,
-                'mime_type': 'text/html'
-            }
+        html = DocumentService._delta_to_html(content, title)
+        return True, {
+            'filename': f'{title}.html',
+            'content': html,
+            'mime_type': 'text/html'
+        }
     
     @staticmethod
     def _delta_to_text(delta: Dict) -> str:

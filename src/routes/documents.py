@@ -150,8 +150,8 @@ def export_document(project_id, doc_id):
     
     format_type = request.args.get('format', 'html')
     
-    if format_type not in ['html', 'txt']:
-        return error_response('Format không hỗ trợ', 'VALIDATION_ERROR', 400)
+    if format_type not in ['html']:
+        return error_response('Format không hỗ trợ (chỉ hỗ trợ html)', 'VALIDATION_ERROR', 400)
     
     success, result = DocumentService.export_document(project_id, doc_id, format_type)
     if success:

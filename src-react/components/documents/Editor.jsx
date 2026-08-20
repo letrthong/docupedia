@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { Save, FileText, Download, Clock, Eye, Edit, X, Share2, Globe, Lock, Upload } from 'lucide-react';
+import { Save, FileText, Download, Clock, Eye, Edit, X, Share2, Globe, Lock, Upload, Printer, ChevronDown } from 'lucide-react';
 import { useProject } from '../../contexts/ProjectContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -59,12 +59,25 @@ function Editor() {
   const emojiButtonRef = useRef(null);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef(null);
   
   const currentDocIdRef = useRef(null);
   const quillRef = useRef(null);
   const saveTimeoutRef = useRef(null);
   const fileInputRef = useRef(null);
   const handleSaveRef = useRef(null);
+
+  // Đóng menu xuất file khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
 
 
@@ -1162,6 +1175,143 @@ function Editor() {
     }
   };
 
+  // Xuất tài liệu ra định dạng PDF chuẩn in ấn
+  const handleExportPDF = () => {
+    if (!currentDocument) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      error('Trình duyệt đã chặn cửa sổ pop-up. Vui lòng cho phép pop-up để in/lưu PDF.');
+      return;
+    }
+
+    const docTitle = title || currentDocument.title || 'Tài liệu không có tiêu đề';
+    
+    // Lấy nội dung HTML hiện tại
+    let bodyContent = htmlContent || '';
+    if (!isViewMode && quillRef.current) {
+      bodyContent = quillRef.current.getEditor().root.innerHTML;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>${docTitle}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1e293b;
+      line-height: 1.65;
+      font-size: 14px;
+      padding: 0;
+      margin: 0;
+      background: #fff;
+    }
+    .pdf-header {
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+    .pdf-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 8px 0;
+    }
+    .pdf-meta {
+      font-size: 12px;
+      color: #64748b;
+      display: flex;
+      gap: 16px;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+      page-break-inside: avoid;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 13px;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 600;
+    }
+    pre, code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+    }
+    pre.ql-syntax {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      page-break-inside: avoid;
+    }
+    blockquote {
+      border-left: 4px solid #3b82f6;
+      margin: 16px 0;
+      padding: 8px 16px;
+      color: #475569;
+      background: #f8fafc;
+      page-break-inside: avoid;
+    }
+    .ql-video-container {
+      display: none;
+    }
+    @media print {
+      body {
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="pdf-header">
+    <h1 class="pdf-title">${docTitle}</h1>
+    <div class="pdf-meta">
+      <span>Dự án: ${currentProject?.name || 'Docupedia'}</span> • 
+      <span>Xuất ngày: ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN')}</span>
+    </div>
+  </div>
+  <div class="ql-editor">${bodyContent}</div>
+  <script>
+    window.onload = () => {
+      setTimeout(() => {
+        window.print();
+        window.close();
+      }, 350);
+    };
+  </script>
+</body>
+</html>`);
+    printWindow.document.close();
+  };
+
   // Import nội dung từ file HTML/TXT
   const handleImport = (e) => {
     const file = e.target.files?.[0];
@@ -1371,15 +1521,48 @@ function Editor() {
                 <span className="hidden sm:inline">Chia sẻ</span>
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleExport('html')}
-              title="Tải xuống HTML"
-            >
-              <Download className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Tải xuống</span>
-            </Button>
+            {/* Menu Xuất file (PDF, HTML, TXT) */}
+            <div className="relative" ref={exportMenuRef}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                title="Tải xuống / Xuất file"
+                className="flex items-center gap-1"
+              >
+                <Download className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Xuất file</span>
+                <ChevronDown className="w-3 h-3 opacity-60 ml-0.5" />
+              </Button>
+
+              {isExportMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      handleExportPDF();
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs sm:text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Printer className="w-4 h-4 text-rose-500" />
+                    <span>Xuất PDF (In)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      handleExport('html');
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-xs sm:text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60 flex items-center gap-2.5 transition-colors"
+                  >
+                    <Globe className="w-4 h-4 text-emerald-500" />
+                    <span>Xuất HTML</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             {canEdit && (
               <Button
