@@ -1,0 +1,8 @@
+{
+  "v1_base64_and_tree_migration": true,
+  "migrated_at": "2026-08-20T15:39:06.224930Z",
+  "summary": {
+    "migrated_images": 2,
+    "migrated_docs": 2
+  }
+}
