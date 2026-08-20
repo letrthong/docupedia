@@ -48,6 +48,63 @@ export const compressImageToWebP = (file, maxWidth = 1600, quality = 0.7) => {
   });
 };
 
+// Nén ảnh thành WebP Blob sử dụng Canvas
+export const compressImageToBlob = (file, maxWidth = 1600, quality = 0.7) => {
+  return new Promise((resolve, reject) => {
+    if (file.type === 'image/gif') {
+      resolve(file);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        // Resize nếu chiều rộng lớn hơn maxWidth
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Không thể khởi tạo Canvas 2D'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert sang webp blob
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const convertedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+                type: 'image/webp'
+              });
+              resolve(convertedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/webp',
+          quality
+        );
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
+
 // Các định dạng Quill hỗ trợ
 export const formats = [
   'header', 'font',

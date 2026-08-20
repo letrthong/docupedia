@@ -13,7 +13,12 @@
     "doc_1780390072231": {
       "id": "doc_1780390072231",
       "type": "file",
-      "title": "02 abc"
+      "title": "02 abc",
+      "parent_id": "folder_1780390104580",
+      "created_at": "2026-06-02T08:47:52.231537Z",
+      "updated_at": "2026-06-23T15:34:29.195807Z",
+      "created_by": "user_admin",
+      "updated_by": "user_admin"
     },
     "folder_1780390104580": {
       "id": "folder_1780390104580",
@@ -29,22 +34,42 @@
     "doc_1780390775751": {
       "id": "doc_1780390775751",
       "type": "file",
-      "title": "dsfsdfsd"
+      "title": "dsfsdfsd",
+      "parent_id": "folder_1781790060164",
+      "created_at": "2026-06-02T08:59:35.751651Z",
+      "updated_at": "2026-06-26T12:59:16.276160Z",
+      "created_by": "user_admin",
+      "updated_by": "user_admin"
     },
     "doc_1781344648973": {
       "id": "doc_1781344648973",
       "type": "file",
-      "title": "03 xx"
+      "title": "03 xx",
+      "parent_id": "folder_1780390104580",
+      "created_at": "2026-06-13T09:57:28.973129Z",
+      "updated_at": "2026-06-22T13:43:44.162674Z",
+      "created_by": "user_admin",
+      "updated_by": "user_admin"
     },
     "doc_1781353938579": {
       "id": "doc_1781353938579",
       "type": "file",
-      "title": "ssfs"
+      "title": "ssfs",
+      "parent_id": "folder_1780390104580",
+      "created_at": "2026-06-13T12:32:18.579516Z",
+      "updated_at": "2026-08-20T15:42:48.967199Z",
+      "created_by": "user_admin",
+      "updated_by": "user_admin"
     },
     "doc_1781425095698": {
       "id": "doc_1781425095698",
       "type": "file",
-      "title": "01 sfaf"
+      "title": "01 sfaf",
+      "parent_id": "folder_1780390104580",
+      "created_at": "2026-06-14T08:18:15.698264Z",
+      "updated_at": "2026-06-23T15:24:33.711420Z",
+      "created_by": "user_admin",
+      "updated_by": "user_admin"
     },
     "folder_1781790055427": {
       "id": "folder_1781790055427",
@@ -70,5 +95,5 @@
       "children": []
     }
   },
-  "updated_at": "2026-06-18T13:41:31.341567Z"
+  "updated_at": "2026-08-20T15:42:49.343814Z"
 }

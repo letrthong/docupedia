@@ -190,19 +190,24 @@ class DocumentService:
     
     @staticmethod
     def get_all_documents(project_id: str) -> List[Dict]:
-        """Get all documents in a project"""
-        docs_dir = DocumentService._get_docs_dir(project_id)
+        """Get all documents in a project (read metadata from tree to prevent memory spikes)"""
+        tree = TreeService.get_tree(project_id)
+        if not tree or 'nodes' not in tree:
+            return []
+            
         documents = []
-        
-        if os.path.exists(docs_dir):
-            for filename in os.listdir(docs_dir):
-                if filename.endswith('.json') and not (filename.endswith('_comments.json') or filename.endswith('_history.json')):
-                    filepath = os.path.join(docs_dir, filename)
-                    doc = JSONStorage.read(filepath)
-                    # Don't include content in list view
-                    doc_summary = {k: v for k, v in doc.items() if k != 'content'}
-                    documents.append(doc_summary)
-        
+        for node_id, node in tree.get('nodes', {}).items():
+            if node.get('type') == 'file':
+                documents.append({
+                    'id': node.get('id', node_id),
+                    'type': 'file',
+                    'title': node.get('title', 'Untitled'),
+                    'parent_id': node.get('parent_id', 'root'),
+                    'created_at': node.get('created_at'),
+                    'updated_at': node.get('updated_at'),
+                    'created_by': node.get('created_by'),
+                    'updated_by': node.get('updated_by')
+                })
         return documents
     
     @staticmethod
@@ -239,11 +244,16 @@ class DocumentService:
         filepath = os.path.join(docs_dir, f'{doc_id}.json')
         JSONStorage.write(filepath, document)
         
-        # Update tree
+        # Update tree with metadata
         TreeService.add_node(project_id, doc_id, document['parent_id'], {
             'id': doc_id,
             'type': 'file',
-            'title': document['title']
+            'title': document['title'],
+            'parent_id': document['parent_id'],
+            'created_by': user_id,
+            'updated_by': user_id,
+            'created_at': timestamp,
+            'updated_at': timestamp
         })
         
         # Add history entry
@@ -291,7 +301,11 @@ class DocumentService:
         JSONStorage.write(filepath, document)
         
         # Update in tree nodes
-        TreeService.update_node(project_id, doc_id, {'title': document['title']})
+        TreeService.update_node(project_id, doc_id, {
+            'title': document['title'],
+            'updated_by': user_id,
+            'updated_at': document['updated_at']
+        })
         
         # Add history entry
         if changes:

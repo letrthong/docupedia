@@ -516,8 +516,23 @@ Khi hệ thống khởi tạo lần đầu, tự động tạo tài khoản admi
     "children": ["folder_guides", "doc_quicknote"]
   },
   "nodes": {
-    "folder_guides": { "..." },
-    "doc_quicknote": { "..." }
+    "folder_guides": {
+      "id": "folder_guides",
+      "type": "folder",
+      "title": "Hướng dẫn sử dụng",
+      "parent_id": "root",
+      "children": ["doc_guide_1"]
+    },
+    "doc_quicknote": {
+      "id": "doc_quicknote",
+      "type": "file",
+      "title": "Ghi chú nhanh",
+      "parent_id": "root",
+      "created_by": "user_admin",
+      "updated_by": "user_admin",
+      "created_at": "2026-06-02T10:00:00Z",
+      "updated_at": "2026-06-02T12:30:00Z"
+    }
   },
   "updated_at": "2026-06-02T12:30:00Z"
 }
@@ -616,26 +631,32 @@ docupedia_data/
 ├── projects.json           # Danh sách projects
 ├── permissions.json        # Bảng phân quyền user-project
 ├── locks.json              # Khóa chỉnh sửa tài liệu (Document locks)
+├── settings.json           # Cấu hình hệ thống chung (Session timeout, v.v.)
+├── migration_status.json   # Trạng thái migration dữ liệu tự động
 ├── sessions.json           # Active sessions (optional)
 │
 └── projects/               # Thư mục chứa data từng project
     ├── proj_1717347200000/
-    │   ├── tree.json       # Cấu trúc cây của project
-    │   ├── docs/
+    │   ├── tree.json       # Cấu trúc cây và metadata documents của project
+    │   ├── docs/           # Nội dung chi tiết các tài liệu
     │   │   ├── doc_1.json
     │   │   ├── doc_1_comments.json
     │   │   ├── doc_1_history.json
     │   │   ├── doc_2.json
     │   │   ├── doc_2_comments.json
     │   │   └── doc_2_history.json
-    │   └── folders/
-    │       ├── folder_1.json
-    │       └── folder_2.json
+    │   ├── folders/        # Dữ liệu các thư mục con
+    │   │   ├── folder_1.json
+    │   │   └── folder_2.json
+    │   └── uploads/        # Lưu trữ ảnh tĩnh và file đính kèm (Tách rời khỏi JSON)
+    │       ├── img_1717347250000_a1b2c3.webp
+    │       └── img_1717347260000_d4e5f6.webp
     │
     └── proj_1717347300000/
         ├── tree.json
         ├── docs/
-        └── folders/
+        ├── folders/
+        └── uploads/
 ```
 
 ### 6.1. File khởi tạo mặc định (`users.json`)
@@ -928,15 +949,44 @@ Response (for non-admin user):
       "name": "Dự án ABC",
       "permissions": ["view", "create", "edit"]
     },
-    {
-      "id": "proj_456",
-      "name": "Dự án XYZ",
-      "permissions": ["view"]
-    }
-  ]
+### Upload Image / File to Project
+```bash
+curl -X POST http://localhost:5000/api/v1/docupedia/projects/proj_123/upload \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@image.png"
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "url": "/api/v1/docupedia/projects/proj_123/uploads/img_1717347250000_a1b2c3.webp",
+    "filename": "img_1717347250000_a1b2c3.webp"
+  },
+  "message": "Tải file thành công"
 }
 ```
 
 ---
 
-*Cập nhật lần cuối: 2026-06-02*
+## 10. Tối ưu hóa Bộ nhớ (Memory Optimization) & Migration
+
+### 10.1. Tối ưu truy vấn danh sách tài liệu
+- **Vấn đề cũ**: Hàm `get_all_documents()` đọc toàn bộ các file `doc_*.json` trên ổ đĩa vào RAM để bóc tách bỏ `content`, gây spike RAM khi project có nhiều tài liệu lớn.
+- **Giải pháp mới**: Hàm `get_all_documents()` đọc danh sách metadata trực tiếp từ file `tree.json` (1 file duy nhất). RAM tiêu thụ duy trì ở mức tối thiểu (< 1MB).
+
+### 10.2. Tách rời hình ảnh khỏi Delta JSON
+- **Vấn đề cũ**: Ảnh chèn vào Quill Editor được lưu dưới dạng chuỗi Base64 dài hàng triệu ký tự trực tiếp trong file JSON của bài viết.
+- **Giải pháp mới**: Frontend tự động nén ảnh sang định dạng WebP Blob và tải lên endpoint `POST /projects/:projectId/upload`. Backend lưu file vào `projects/<id>/uploads/` và chỉ lưu URL vào Delta JSON.
+
+### 10.3. Cơ chế Auto-Migration có hạn sử dụng (Self-Disabling)
+- **Vị trí**: `src/utils/migration.py` tích hợp trong `init_docupedia_db()`.
+- **Chức năng**: Quét các tài liệu cũ, bóc tách ảnh Base64 ra file tĩnh và đồng bộ metadata vào `tree.json`.
+- **Kiểm soát thời hạn**:
+  1. **Flag Status**: Ghi nhận `v1_base64_and_tree_migration = true` vào `migration_status.json` để chỉ chạy 1 lần duy nhất trên hệ thống.
+  2. **Cutoff Date**: Nếu thời gian vượt qua mốc cấu hình `MIGRATION_CUTOFF_DATE` (ví dụ `2026-08-22`), hệ thống sẽ tự động bỏ qua và không quét nữa.
+
+---
+
+*Cập nhật lần cuối: 2026-08-20*

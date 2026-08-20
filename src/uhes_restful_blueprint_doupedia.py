@@ -8,6 +8,7 @@ if DOCUPEDIA_SRC_DIR not in sys.path:
     sys.path.insert(0, DOCUPEDIA_SRC_DIR)
 
 from services.auth_service import init_default_admin
+from utils.migration import run_data_migrations
 
 # Bắt buộc import các file route handlers để logic được đính kèm vào các blueprints
 from routes import auth, users, projects, permissions, documents, folders, tree, settings
@@ -39,6 +40,7 @@ docupedia_bp.register_blueprint(tree_bp, url_prefix='/projects')
 docupedia_bp.register_blueprint(settings_bp, url_prefix='/settings')
 
 def init_docupedia_db():
-    """Khởi tạo dữ liệu và tài khoản admin mặc định"""
+    """Khởi tạo dữ liệu và tài khoản admin mặc định, đồng thời chạy migration tối ưu dữ liệu cũ"""
     print("[Docupedia] Initializing default data and admin user...")
     init_default_admin()
+    run_data_migrations()

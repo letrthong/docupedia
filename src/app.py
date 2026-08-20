@@ -93,7 +93,12 @@ def serve_docupedia(path=""):
     index_path = os.path.join(DOCUPEDIA_STATIC_DIR, "index.html")
     if not os.path.exists(index_path):
         print(f"[Flask][ERROR] Docupedia index.html not found at {index_path}")
-    return send_from_directory(DOCUPEDIA_STATIC_DIR, "index.html")
+    
+    response = send_from_directory(DOCUPEDIA_STATIC_DIR, "index.html")
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
  
 if __name__ == "__main__":

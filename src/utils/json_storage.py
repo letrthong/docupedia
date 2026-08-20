@@ -6,17 +6,15 @@ from typing import Dict, List, Any, Optional
 from contextlib import contextmanager
 import threading
 
-# File lock for thread safety
-_file_locks = {}
-_lock_manager = threading.Lock()
+# Fixed-size lock stripe pool for thread safety with O(1) constant memory usage
+_NUM_LOCK_STRIPES = 64
+_lock_stripes = [threading.Lock() for _ in range(_NUM_LOCK_STRIPES)]
 
 
 def _get_file_lock(filepath: str) -> threading.Lock:
-    """Get or create a lock for a specific file"""
-    with _lock_manager:
-        if filepath not in _file_locks:
-            _file_locks[filepath] = threading.Lock()
-        return _file_locks[filepath]
+    """Get striped lock based on filepath hash (thread-safe with zero memory growth)"""
+    index = abs(hash(filepath)) % _NUM_LOCK_STRIPES
+    return _lock_stripes[index]
 
 
 class JSONStorage:

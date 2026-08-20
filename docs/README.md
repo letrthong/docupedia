@@ -36,6 +36,7 @@ chmod +x start_docker.sh
   - **Chèn nhanh ngày/giờ**: Nút chèn ngày trên thanh công cụ và phím tắt mở rộng (`/today`, `/now`, `/time`, `/date`).
   - **Nút Copy mã nguồn**: Nút Copy nổi tự động hiển thị khi rê chuột vào khối Code Block (`pre.ql-syntax`) ở chế độ View mode.
   - **Định dạng liên kết (Web link)**: Tự động hiển thị liên kết màu xanh dương, gạch chân và in nghiêng chuẩn web.
+  - **Tách rời ảnh tĩnh (WebP Media Upload)**: Tự động nén ảnh sang WebP và tải lên server lưu trữ riêng biệt, giảm 99% dung lượng JSON và chống Memory Spike cho Backend.
 - Tự động lưu (Auto-save) sau khoảng thời gian tùy chọn (mặc định 3 giây).
 - Xuất bản tài liệu dưới định dạng HTML hoặc văn bản TXT.
 

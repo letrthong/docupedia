@@ -11,7 +11,7 @@ import { documentsApi } from '../../api';
 // Imports sau khi refactor
 import './Editor.css';
 import './CustomQuillImage';
-import { readFileAsDataURL, compressImageToWebP, formats } from './editorUtils';
+import { readFileAsDataURL, compressImageToWebP, compressImageToBlob, formats } from './editorUtils';
 import TableTools from './TableTools';
 import IconPicker from './IconPicker';
 import CommentsSection from './CommentsSection';
@@ -77,29 +77,30 @@ function Editor() {
 
     input.onchange = async () => {
       const file = input.files?.[0];
-      if (!file) return;
+      if (!file || !currentProject?.id) return;
 
       try {
-        let imageDataUrl;
-        if (file.type === 'image/gif') {
-          imageDataUrl = await readFileAsDataURL(file);
-        } else {
-          imageDataUrl = await compressImageToWebP(file, 1600, 0.7);
+        const compressedFile = await compressImageToBlob(file, 1600, 0.7);
+        const res = await documentsApi.uploadImage(currentProject.id, compressedFile);
+        const imageUrl = res?.data?.url || res?.url;
+
+        if (!imageUrl) {
+          throw new Error('Không nhận được đường dẫn ảnh');
         }
 
         const editor = quillRef.current.getEditor();
         const range = editor.getSelection();
         const index = range ? range.index : editor.getLength();
-        editor.insertEmbed(index, 'image', imageDataUrl);
+        editor.insertEmbed(index, 'image', imageUrl);
         editor.setSelection(index + 1);
         setContent(editor.getContents());
         setHasChanges(true);
       } catch (err) {
         console.error('Image upload failed:', err);
-        error('Không thể xử lý ảnh');
+        error('Không thể tải ảnh lên: ' + (err.message || 'Lỗi'));
       }
     };
-  }, [error]);
+  }, [error, currentProject]);
 
   // Custom handler khi click nút chọn video trên toolbar
   const handleVideoUploadClick = useCallback(() => {
@@ -561,17 +562,17 @@ function Editor() {
 
         for (const file of files) {
           try {
-            let imageDataUrl;
-            if (file.type === 'image/gif') {
-              imageDataUrl = await readFileAsDataURL(file);
-            } else {
-              imageDataUrl = await compressImageToWebP(file, 1600, 0.7);
-            }
+            if (!currentProject?.id) continue;
+            const compressedFile = await compressImageToBlob(file, 1600, 0.7);
+            const res = await documentsApi.uploadImage(currentProject.id, compressedFile);
+            const imageUrl = res?.data?.url || res?.url;
             
-            editor.insertEmbed(insertIndex, 'image', imageDataUrl);
-            insertIndex++;
+            if (imageUrl) {
+              editor.insertEmbed(insertIndex, 'image', imageUrl);
+              insertIndex++;
+            }
           } catch (err) {
-            console.error('Không thể xử lý ảnh pasted/dropped:', err);
+            console.error('Không thể tải ảnh pasted/dropped:', err);
           }
         }
         editor.setSelection(insertIndex);
@@ -587,7 +588,7 @@ function Editor() {
       root.removeEventListener('paste', handlePasteOrDrop);
       root.removeEventListener('drop', handlePasteOrDrop);
     };
-  }, [isQuillLoaded, canEdit, isViewMode]);
+  }, [isQuillLoaded, canEdit, isViewMode, currentProject]);
 
   // Theo dõi con trỏ chuột trong editor xem có đang ở trong ô bảng hay không
   useEffect(() => {

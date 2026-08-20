@@ -1,9 +1,13 @@
-from flask import request, g
+from flask import request, g, send_from_directory
 import os
 import sys
+import time
+import uuid
+from werkzeug.utils import secure_filename
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from config_doupedia import get_config_doupedia
 from routes import projects_bp
 from services.project_service import ProjectService
 from services.permission_service import PermissionService
@@ -11,6 +15,8 @@ from middleware.auth_middleware import require_auth, require_admin, get_current_
 from middleware.permission_middleware import require_permission, get_user_permissions
 from utils.response import success_response, error_response
 from utils.validators import validate_project, validate_permission
+
+config = get_config_doupedia()
 
 
 @projects_bp.route('', methods=['GET'])
@@ -189,3 +195,54 @@ def delete_project_permission(project_id, user_id):
         return success_response(None, message)
     else:
         return error_response(message, 'DELETE_FAILED', 400)
+
+
+# ========== File & Media Upload Routes ==========
+
+@projects_bp.route('/<project_id>/upload', methods=['POST'])
+@require_auth
+def upload_project_file(project_id):
+    """POST /api/v1/projects/:id/upload - Upload an image or file for project"""
+    user = get_current_user()
+    
+    # Check permission (create, edit, or admin)
+    permissions = get_user_permissions(user['id'], project_id, user.get('role'))
+    if 'edit' not in permissions and 'create' not in permissions and user.get('role') != 'admin':
+        return error_response('Bạn không có quyền tải file lên dự án này', 'PERMISSION_DENIED', 403)
+        
+    if 'file' not in request.files:
+        return error_response('Không tìm thấy file để tải lên', 'VALIDATION_ERROR', 400)
+        
+    file = request.files['file']
+    if not file or file.filename == '':
+        return error_response('File không hợp lệ', 'VALIDATION_ERROR', 400)
+        
+    # Get extension
+    filename = secure_filename(file.filename)
+    ext = os.path.splitext(filename)[1].lower()
+    if not ext:
+        ext = '.webp'
+        
+    # Generate unique filename
+    unique_filename = f"img_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}{ext}"
+    
+    upload_dir = os.path.join(config.PROJECTS_DATA_DIR, str(project_id), 'uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_path = os.path.join(upload_dir, unique_filename)
+    file.save(file_path)
+    
+    # Return URL path
+    file_url = f"/api/v1/docupedia/projects/{project_id}/uploads/{unique_filename}"
+    return success_response({
+        'url': file_url,
+        'filename': unique_filename
+    }, 'Tải file thành công', 201)
+
+
+@projects_bp.route('/<project_id>/uploads/<filename>', methods=['GET'])
+def serve_project_upload(project_id, filename):
+    """GET /api/v1/projects/:id/uploads/:filename - Serve uploaded media file"""
+    upload_dir = os.path.join(config.PROJECTS_DATA_DIR, str(project_id), 'uploads')
+    return send_from_directory(upload_dir, filename)
+

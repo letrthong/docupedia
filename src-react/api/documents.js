@@ -85,6 +85,17 @@ const documentsApi = {
   heartbeatLock: async (projectId, docId) => {
     return client.post(`/projects/${projectId}/documents/${docId}/heartbeat`);
   },
+
+  // Upload image/file for project
+  uploadImage: async (projectId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return client.post(`/projects/${projectId}/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
 
 export default documentsApi;
