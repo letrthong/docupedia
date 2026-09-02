@@ -132,6 +132,7 @@ class TestAPIEndpoints(unittest.TestCase):
         serve_res = self.client.get(f"/api/v1/docupedia/projects/{pid}/uploads/{filename}")
         self.assertEqual(serve_res.status_code, 200)
         self.assertEqual(serve_res.data, b"fake_image_bytes_png_or_webp")
+        serve_res.close()
 
     def test_04_document_crud_and_locking_api(self):
         """4. Kiểm tra APIs tạo tài liệu, khóa (lock), gia hạn (heartbeat) và mở khóa (unlock)."""

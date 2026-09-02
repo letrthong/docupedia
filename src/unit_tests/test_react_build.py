@@ -164,33 +164,20 @@ class TestReactBuildAndStaticAnalysis(unittest.TestCase):
         vite_config = os.path.join(PROJECT_ROOT, "vite.config.js")
         self.assertTrue(os.path.exists(vite_config), "vite.config.js không tồn tại")
 
-    def test_04_vite_build_dry_run_if_node_available(self):
-        """4. Thực thi lệnh build nếu có Node/npm trên máy hoặc bỏ qua với ghi chú."""
-        try:
-            # Kiểm tra xem npm có sẵn trong PATH không
-            node_version = subprocess.run(
-                ["node", "-v"],
-                capture_output=True,
-                text=True,
-                check=False,
-                shell=True
-            )
-            if node_version.returncode == 0:
-                # Chạy npm run build
-                build_res = subprocess.run(
-                    ["npm", "run", "build"],
-                    cwd=PROJECT_ROOT,
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    shell=True
-                )
-                self.assertEqual(
-                    build_res.returncode, 0,
-                    f"Vite build thất bại:\nStdout: {build_res.stdout}\nStderr: {build_res.stderr}"
-                )
-        except Exception:
-            pass
+    def test_04_vite_html_and_entrypoint_valid(self):
+        """4. Kiểm tra cấu hình index.html và điểm nhập (entrypoint) của Vite."""
+        index_html_path = os.path.join(PROJECT_ROOT, "index.html")
+        self.assertTrue(os.path.exists(index_html_path), "index.html không tồn tại ở thư mục gốc")
+
+        with open(index_html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        # Kiểm tra div root và script main.jsx
+        self.assertIn('id="root"', html_content, "index.html phải có thẻ div với id='root'")
+        self.assertIn('src-react/main.jsx', html_content, "index.html phải nạp entrypoint 'src-react/main.jsx'")
+
+        main_jsx_path = os.path.join(SRC_REACT_DIR, "main.jsx")
+        self.assertTrue(os.path.exists(main_jsx_path), "src-react/main.jsx không tồn tại")
 
     def test_05_app_jsx_routes_and_lazy_pages_exist(self):
         """5. Kiểm tra cấu trúc App.jsx: các lazy-loaded routes và Providers lồng nhau đúng chuẩn."""

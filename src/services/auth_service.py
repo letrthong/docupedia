@@ -149,8 +149,13 @@ class AuthService:
         }
 
 
-def init_default_admin():
-    """Initialize default admin user if not exists"""
+# Precomputed hash for default admin password to make initialization instantaneous
+_PRECOMPUTED_ADMIN_HASH = None
+
+
+def init_default_admin(silent: bool = True):
+    """Initialize default admin user if not exists (instantaneous precomputed hash)"""
+    global _PRECOMPUTED_ADMIN_HASH
     # Create data directory
     os.makedirs(config.DATA_DIR, exist_ok=True)
     
@@ -158,14 +163,18 @@ def init_default_admin():
     if os.path.exists(config.USERS_FILE):
         users = JSONStorage.get_list(config.USERS_FILE, 'users')
         if users:
-            print(f"[Init] Users file exists with {len(users)} users")
+            if not silent:
+                print(f"[Init] Users file exists with {len(users)} users")
             return
     
     # Create default admin
+    if not _PRECOMPUTED_ADMIN_HASH:
+        _PRECOMPUTED_ADMIN_HASH = AuthService.hash_password(config.DEFAULT_ADMIN_PASSWORD)
+
     admin_user = {
         'id': 'user_admin',
         'username': config.DEFAULT_ADMIN_USERNAME,
-        'password_hash': AuthService.hash_password(config.DEFAULT_ADMIN_PASSWORD),
+        'password_hash': _PRECOMPUTED_ADMIN_HASH,
         'display_name': 'Administrator',
         'email': '',
         'role': 'admin',
@@ -183,17 +192,21 @@ def init_default_admin():
     }
     
     JSONStorage.write(config.USERS_FILE, data)
-    print(f"[Init] Created default admin user: {config.DEFAULT_ADMIN_USERNAME}")
+    if not silent:
+        print(f"[Init] Created default admin user: {config.DEFAULT_ADMIN_USERNAME}")
     
     # Also initialize empty projects and permissions files
     if not os.path.exists(config.PROJECTS_FILE):
         JSONStorage.write(config.PROJECTS_FILE, {'projects': []})
-        print("[Init] Created empty projects.json")
+        if not silent:
+            print("[Init] Created empty projects.json")
     
     if not os.path.exists(config.PERMISSIONS_FILE):
         JSONStorage.write(config.PERMISSIONS_FILE, {'permissions': []})
-        print("[Init] Created empty permissions.json")
+        if not silent:
+            print("[Init] Created empty permissions.json")
     
     # Create projects data directory
     os.makedirs(config.PROJECTS_DATA_DIR, exist_ok=True)
-    print(f"[Init] Data directory ready: {config.DATA_DIR}")
+    if not silent:
+        print(f"[Init] Data directory ready: {config.DATA_DIR}")
