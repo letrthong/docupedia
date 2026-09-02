@@ -133,18 +133,25 @@ export const compressImageToBlob = (file, maxWidth = 1600, quality = 0.7) => {
 let cachedConverterQuill = null;
 let cachedConverterContainer = null;
 
-export const convertDeltaToHtml = (docContent, QuillConstructor = window.Quill) => {
+export const convertDeltaToHtml = (docContent, QuillConstructor = null) => {
   if (!docContent) return '';
   if (typeof docContent === 'string') return docContent;
   if (typeof docContent !== 'object' || !docContent.ops) return '';
+
+  // Hỗ trợ môi trường Node.js / Unit test runner không có DOM
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return '';
+  }
+
+  const ActualQuill = QuillConstructor || (typeof window !== 'undefined' ? window.Quill : null);
 
   try {
     if (!cachedConverterContainer) {
       cachedConverterContainer = document.createElement('div');
       cachedConverterContainer.style.display = 'none';
       document.body.appendChild(cachedConverterContainer);
-      if (QuillConstructor) {
-        cachedConverterQuill = new QuillConstructor(cachedConverterContainer, {
+      if (ActualQuill) {
+        cachedConverterQuill = new ActualQuill(cachedConverterContainer, {
           readOnly: true,
           modules: { syntax: true }
         });
@@ -163,7 +170,7 @@ export const convertDeltaToHtml = (docContent, QuillConstructor = window.Quill) 
           block.classList.add(`language-${lang}`);
         }
         
-        if (window.hljs) {
+        if (typeof window !== 'undefined' && window.hljs) {
           try {
             if (window.hljs.highlightElement) {
               window.hljs.highlightElement(block);
