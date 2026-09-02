@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ChevronRight, 
@@ -239,6 +239,8 @@ function TreeView() {
   const [newTitle, setNewTitle] = useState('');
   const [targetFolderId, setTargetFolderId] = useState('root');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   const canCreate = hasPermission('create');
   const canDelete = hasPermission('delete');
@@ -251,98 +253,153 @@ function TreeView() {
     }
   };
 
-  const handleCreateDocument = async () => {
-    if (!newTitle.trim()) return;
+  const handleCreateDocument = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSubmittingRef.current || isSubmitting || !newTitle.trim()) return;
     
-    const result = await createDocument({
-      title: newTitle.trim(),
-      parent_id: newDocModal.parentId
-    });
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     
-    if (result.success) {
-      success('Tạo tài liệu thành công');
-      setNewDocModal({ open: false, parentId: 'root' });
-      setNewTitle('');
-      // Auto-select new document
-      if (result.data?.id) {
-        loadDocument(result.data.id);
-        if (currentProject) {
-          setSearchParams({ projectId: currentProject.id, docId: result.data.id }, { replace: true });
-        }
-      }
-    } else {
-      error(result.error || 'Không thể tạo tài liệu');
-    }
-  };
-
-  const handleCreateFolder = async () => {
-    if (!newTitle.trim()) return;
-    
-    const result = await createFolder({
-      title: newTitle.trim(),
-      parent_id: newFolderModal.parentId
-    });
-    
-    if (result.success) {
-      success('Tạo thư mục thành công');
-      setNewFolderModal({ open: false, parentId: 'root' });
-      setNewTitle('');
-    } else {
-      error(result.error || 'Không thể tạo thư mục');
-    }
-  };
-
-  const handleDelete = async () => {
-    const node = deleteModal.node;
-    if (!node) return;
-    
-    const result = node.type === 'folder' 
-      ? await deleteFolder(node.id)
-      : await deleteDocument(node.id);
-    
-    if (result.success) {
-      success(`Đã xóa ${node.type === 'folder' ? 'thư mục' : 'tài liệu'}`);
-      setDeleteModal({ open: false, node: null });
+    try {
+      const result = await createDocument({
+        title: newTitle.trim(),
+        parent_id: newDocModal.parentId
+      });
       
-      // Xóa docId khỏi URL nếu tài liệu đang mở vừa bị xóa
-      if (node.type !== 'folder' && currentDocument?.id === node.id && currentProject) {
-        setSearchParams({ projectId: currentProject.id }, { replace: true });
+      if (result.success) {
+        success('Tạo tài liệu thành công');
+        setNewDocModal({ open: false, parentId: 'root' });
+        setNewTitle('');
+        // Auto-select new document
+        if (result.data?.id) {
+          loadDocument(result.data.id);
+          if (currentProject) {
+            setSearchParams({ projectId: currentProject.id, docId: result.data.id }, { replace: true });
+          }
+        }
+      } else {
+        error(result.error || 'Không thể tạo tài liệu');
       }
-    } else {
-      error(result.error || 'Không thể xóa');
+    } catch (err) {
+      error(err.message || 'Không thể tạo tài liệu');
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
-  const handleRename = async () => {
-    if (!newTitle.trim() || !renameModal.node) return;
+  const handleCreateFolder = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSubmittingRef.current || isSubmitting || !newTitle.trim()) return;
+    
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    
+    try {
+      const result = await createFolder({
+        title: newTitle.trim(),
+        parent_id: newFolderModal.parentId
+      });
+      
+      if (result.success) {
+        success('Tạo thư mục thành công');
+        setNewFolderModal({ open: false, parentId: 'root' });
+        setNewTitle('');
+      } else {
+        error(result.error || 'Không thể tạo thư mục');
+      }
+    } catch (err) {
+      error(err.message || 'Không thể tạo thư mục');
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const node = deleteModal.node;
+    if (isSubmittingRef.current || isSubmitting || !node) return;
+    
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    
+    try {
+      const result = node.type === 'folder' 
+        ? await deleteFolder(node.id)
+        : await deleteDocument(node.id);
+      
+      if (result.success) {
+        success(`Đã xóa ${node.type === 'folder' ? 'thư mục' : 'tài liệu'}`);
+        setDeleteModal({ open: false, node: null });
+        
+        // Xóa docId khỏi URL nếu tài liệu đang mở vừa bị xóa
+        if (node.type !== 'folder' && currentDocument?.id === node.id && currentProject) {
+          setSearchParams({ projectId: currentProject.id }, { replace: true });
+        }
+      } else {
+        error(result.error || 'Không thể xóa');
+      }
+    } catch (err) {
+      error(err.message || 'Không thể xóa');
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRename = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSubmittingRef.current || isSubmitting || !newTitle.trim() || !renameModal.node) return;
     const node = renameModal.node;
     
-    const result = node.type === 'folder'
-      ? await updateFolder(node.id, { title: newTitle.trim() })
-      : await updateDocument(node.id, { title: newTitle.trim() });
-      
-    if (result.success) {
-      success('Đổi tên thành công');
-      setRenameModal({ open: false, node: null });
-      setNewTitle('');
-    } else {
-      error(result.error || 'Không thể đổi tên');
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    
+    try {
+      const result = node.type === 'folder'
+        ? await updateFolder(node.id, { title: newTitle.trim() })
+        : await updateDocument(node.id, { title: newTitle.trim() });
+        
+      if (result.success) {
+        success('Đổi tên thành công');
+        setRenameModal({ open: false, node: null });
+        setNewTitle('');
+      } else {
+        error(result.error || 'Không thể đổi tên');
+      }
+    } catch (err) {
+      error(err.message || 'Không thể đổi tên');
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
-  const handleMove = async () => {
-    if (!moveModal.node) return;
+  const handleMove = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSubmittingRef.current || isSubmitting || !moveModal.node) return;
     const node = moveModal.node;
     
-    const result = node.type === 'folder'
-      ? await updateFolder(node.id, { parent_id: targetFolderId })
-      : await moveDocument(node.id, targetFolderId);
-      
-    if (result.success) {
-      success('Di chuyển thành công');
-      setMoveModal({ open: false, node: null });
-    } else {
-      error(result.error || 'Không thể di chuyển');
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    
+    try {
+      const result = node.type === 'folder'
+        ? await updateFolder(node.id, { parent_id: targetFolderId })
+        : await moveDocument(node.id, targetFolderId);
+        
+      if (result.success) {
+        success('Di chuyển thành công');
+        setMoveModal({ open: false, node: null });
+      } else {
+        error(result.error || 'Không thể di chuyển');
+      }
+    } catch (err) {
+      error(err.message || 'Không thể di chuyển');
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -520,66 +577,70 @@ function TreeView() {
       {/* New Document Modal */}
       <Modal
         isOpen={newDocModal.open}
-        onClose={() => setNewDocModal({ open: false, parentId: 'root' })}
+        onClose={() => !isSubmitting && setNewDocModal({ open: false, parentId: 'root' })}
         title="Tạo tài liệu mới"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setNewDocModal({ open: false, parentId: 'root' })}>
+            <Button variant="secondary" disabled={isSubmitting} onClick={() => setNewDocModal({ open: false, parentId: 'root' })}>
               Hủy
             </Button>
-            <Button onClick={handleCreateDocument}>
+            <Button onClick={handleCreateDocument} isLoading={isSubmitting} disabled={isSubmitting || !newTitle.trim()}>
               Tạo
             </Button>
           </>
         }
       >
-        <Input
-          label="Tên tài liệu"
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Nhập tên tài liệu..."
-          autoFocus
-          onKeyDown={(e) => e.key === 'Enter' && handleCreateDocument()}
-        />
+        <form onSubmit={handleCreateDocument}>
+          <Input
+            label="Tên tài liệu"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Nhập tên tài liệu..."
+            autoFocus
+            disabled={isSubmitting}
+          />
+        </form>
       </Modal>
 
       {/* New Folder Modal */}
       <Modal
         isOpen={newFolderModal.open}
-        onClose={() => setNewFolderModal({ open: false, parentId: 'root' })}
+        onClose={() => !isSubmitting && setNewFolderModal({ open: false, parentId: 'root' })}
         title="Tạo thư mục mới"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setNewFolderModal({ open: false, parentId: 'root' })}>
+            <Button variant="secondary" disabled={isSubmitting} onClick={() => setNewFolderModal({ open: false, parentId: 'root' })}>
               Hủy
             </Button>
-            <Button onClick={handleCreateFolder}>
+            <Button onClick={handleCreateFolder} isLoading={isSubmitting} disabled={isSubmitting || !newTitle.trim()}>
               Tạo
             </Button>
           </>
         }
       >
-        <Input
-          label="Tên thư mục"
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Nhập tên thư mục..."
-          autoFocus
-          onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-        />
+        <form onSubmit={handleCreateFolder}>
+          <Input
+            label="Tên thư mục"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Nhập tên thư mục..."
+            autoFocus
+            disabled={isSubmitting}
+          />
+        </form>
       </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={deleteModal.open}
-        onClose={() => setDeleteModal({ open: false, node: null })}
+        onClose={() => !isSubmitting && setDeleteModal({ open: false, node: null })}
         title="Xác nhận xóa"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setDeleteModal({ open: false, node: null })}>
+            <Button variant="secondary" disabled={isSubmitting} onClick={() => setDeleteModal({ open: false, node: null })}>
               Hủy
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
+            <Button variant="danger" onClick={handleDelete} isLoading={isSubmitting} disabled={isSubmitting}>
               Xóa
             </Button>
           </>
@@ -595,63 +656,68 @@ function TreeView() {
         </p>
       </Modal>
 
-  {/* Rename Modal */}
-  <Modal
-    isOpen={renameModal.open}
-    onClose={() => setRenameModal({ open: false, node: null })}
-    title="Đổi tên"
-    footer={
-      <>
-        <Button variant="secondary" onClick={() => setRenameModal({ open: false, node: null })}>
-          Hủy
-        </Button>
-        <Button onClick={handleRename}>
-          Lưu
-        </Button>
-      </>
-    }
-  >
-    <Input
-      label="Tên mới"
-      value={newTitle}
-      onChange={(e) => setNewTitle(e.target.value)}
-      placeholder="Nhập tên mới..."
-      autoFocus
-      onKeyDown={(e) => e.key === 'Enter' && handleRename()}
-    />
-  </Modal>
-
-  {/* Move Modal */}
-  <Modal
-    isOpen={moveModal.open}
-    onClose={() => setMoveModal({ open: false, node: null })}
-    title="Di chuyển"
-    footer={
-      <>
-        <Button variant="secondary" onClick={() => setMoveModal({ open: false, node: null })}>
-          Hủy
-        </Button>
-        <Button onClick={handleMove}>
-          Di chuyển
-        </Button>
-      </>
-    }
-  >
-    <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Chọn thư mục đích</label>
-      <select
-        value={targetFolderId}
-        onChange={(e) => setTargetFolderId(e.target.value)}
-        className="w-full p-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      {/* Rename Modal */}
+      <Modal
+        isOpen={renameModal.open}
+        onClose={() => !isSubmitting && setRenameModal({ open: false, node: null })}
+        title="Đổi tên"
+        footer={
+          <>
+            <Button variant="secondary" disabled={isSubmitting} onClick={() => setRenameModal({ open: false, node: null })}>
+              Hủy
+            </Button>
+            <Button onClick={handleRename} isLoading={isSubmitting} disabled={isSubmitting || !newTitle.trim()}>
+              Lưu
+            </Button>
+          </>
+        }
       >
-        {getFolderOptions().map(opt => (
-          <option key={opt.id} value={opt.id}>
-            {opt.title}
-          </option>
-        ))}
-      </select>
-    </div>
-  </Modal>
+        <form onSubmit={handleRename}>
+          <Input
+            label="Tên mới"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Nhập tên mới..."
+            autoFocus
+            disabled={isSubmitting}
+          />
+        </form>
+      </Modal>
+
+      {/* Move Modal */}
+      <Modal
+        isOpen={moveModal.open}
+        onClose={() => !isSubmitting && setMoveModal({ open: false, node: null })}
+        title="Di chuyển"
+        footer={
+          <>
+            <Button variant="secondary" disabled={isSubmitting} onClick={() => setMoveModal({ open: false, node: null })}>
+              Hủy
+            </Button>
+            <Button onClick={handleMove} isLoading={isSubmitting} disabled={isSubmitting}>
+              Di chuyển
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={handleMove}>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Chọn thư mục đích</label>
+            <select
+              value={targetFolderId}
+              onChange={(e) => setTargetFolderId(e.target.value)}
+              disabled={isSubmitting}
+              className="w-full p-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              {getFolderOptions().map(opt => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

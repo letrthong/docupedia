@@ -1,6 +1,4 @@
 # docker-compose for Docupedia
-version: '3.8'
-
 services:
   docupedia:
     container_name: docupedia_app

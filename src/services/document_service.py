@@ -722,4 +722,10 @@ class DocumentService:
             data['history'] = []
             
         data['history'].append(entry)
+        
+        # Giới hạn số lượng bản ghi lịch sử tối đa (chỉ giữ MAX_HISTORY_ENTRIES bản ghi gần nhất)
+        max_history = getattr(config, 'MAX_HISTORY_ENTRIES', 50)
+        if len(data['history']) > max_history:
+            data['history'] = data['history'][-max_history:]
+            
         JSONStorage.write(filepath, data)

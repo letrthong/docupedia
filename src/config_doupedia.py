@@ -18,7 +18,8 @@ ROOT_DIR = Path(__file__).parent.parent.resolve()
 # Source directory
 SRC_DIR = ROOT_DIR / 'src'
 
-ROOT_DATABASE_DIR = Path('/app/config/docupedia')
+# Base paths
+ROOT_DATABASE_DIR = Path(os.environ.get('ROOT_DATABASE_DIR', '/app/config/docupedia'))
 
 # Data directory (can be overridden by environment variable)
 DATA_DIR = Path(os.environ.get('DATA_DIR', ROOT_DIR / 'data'))
@@ -49,12 +50,15 @@ def ensure_dir(path: Path) -> Path:
 def ensure_data_dirs() -> None:
     """Ensure all required data directories exist."""
     ensure_dir(DATA_DIR)
-    ensure_dir(PROJECTS_DATA_DIR)
+    root_db = Path(os.environ.get('ROOT_DATABASE_DIR', '/app/config/docupedia'))
+    ensure_dir(root_db)
+    ensure_dir(root_db / 'projects')
 
 
 def get_project_dir(project_id: int) -> Path:
     """Get the directory path for a specific project."""
-    return PROJECTS_DATA_DIR / str(project_id)
+    root_db = Path(os.environ.get('ROOT_DATABASE_DIR', '/app/config/docupedia'))
+    return root_db / 'projects' / str(project_id)
 
 
 def get_project_tree_file(project_id: int) -> Path:
@@ -89,12 +93,25 @@ class ConfigDoupedia:
     BASE_DIR = str(ROOT_DIR)
     DATA_DIR = str(DATA_DIR)
     
-    # JSON file paths
-    ROOT_DATABASE_DIR = str(ROOT_DATABASE_DIR)
-    USERS_FILE = str(USERS_FILE)
-    PROJECTS_FILE = str(PROJECTS_FILE)
-    PERMISSIONS_FILE = str(PERMISSIONS_FILE)
-    PROJECTS_DATA_DIR = str(PROJECTS_DATA_DIR)
+    @property
+    def ROOT_DATABASE_DIR(self) -> str:
+        return os.environ.get('ROOT_DATABASE_DIR', '/app/config/docupedia')
+    
+    @property
+    def USERS_FILE(self) -> str:
+        return os.path.join(self.ROOT_DATABASE_DIR, 'users.json')
+    
+    @property
+    def PROJECTS_FILE(self) -> str:
+        return os.path.join(self.ROOT_DATABASE_DIR, 'projects.json')
+    
+    @property
+    def PERMISSIONS_FILE(self) -> str:
+        return os.path.join(self.ROOT_DATABASE_DIR, 'permissions.json')
+    
+    @property
+    def PROJECTS_DATA_DIR(self) -> str:
+        return os.path.join(self.ROOT_DATABASE_DIR, 'projects')
     
     # JWT Settings
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'docupedia-secret-key-change-in-production-2026')
@@ -104,6 +121,9 @@ class ConfigDoupedia:
     
     # API Settings
     API_PREFIX = '/api/v1'
+    
+    # History settings
+    MAX_HISTORY_ENTRIES = int(os.environ.get('MAX_HISTORY_ENTRIES', 50))
     
     # CORS
     CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*').split(',')
@@ -124,12 +144,20 @@ class ProductionConfig(ConfigDoupedia):
     DEBUG = False
 
 
+_config_instance = None
+
+
 def get_config_doupedia():
-    """Get configuration based on environment."""
+    """Get configuration singleton based on environment."""
+    global _config_instance
+    if _config_instance is not None:
+        return _config_instance
     env = os.environ.get('FLASK_ENV', 'development')
     if env == 'production':
-        return ProductionConfig()
-    return DevelopmentConfig()
+        _config_instance = ProductionConfig()
+    else:
+        _config_instance = DevelopmentConfig()
+    return _config_instance
 
 
 # Initialize data directories on module import

@@ -5,7 +5,8 @@
     "type": "folder",
     "title": "Thư mục gốc",
     "children": [
-      "doc_1781343677641"
+      "doc_1781343677641",
+      "folder_1788267598894"
     ]
   },
   "nodes": {
@@ -18,7 +19,33 @@
       "updated_at": "2026-06-28T04:31:27.421514Z",
       "created_by": "user_admin",
       "updated_by": "user_admin"
+    },
+    "folder_1788267598894": {
+      "id": "folder_1788267598894",
+      "type": "folder",
+      "title": "ssdsd",
+      "children": [
+        "folder_1788267610303"
+      ]
+    },
+    "folder_1788267610303": {
+      "id": "folder_1788267610303",
+      "type": "folder",
+      "title": "abc",
+      "children": [
+        "doc_1788267615949"
+      ]
+    },
+    "doc_1788267615949": {
+      "id": "doc_1788267615949",
+      "type": "file",
+      "title": "123",
+      "parent_id": "folder_1788267610303",
+      "created_by": "user_admin",
+      "updated_by": "user_admin",
+      "created_at": "2026-09-01T13:00:15.949572Z",
+      "updated_at": "2026-09-01T13:00:15.949572Z"
     }
   },
-  "updated_at": "2026-06-28T04:31:27.431189Z"
+  "updated_at": "2026-09-01T13:00:15.955925Z"
 }

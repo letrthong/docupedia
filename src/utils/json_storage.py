@@ -6,12 +6,12 @@ from typing import Dict, List, Any, Optional
 from contextlib import contextmanager
 import threading
 
-# Fixed-size lock stripe pool for thread safety with O(1) constant memory usage
+# Fixed-size re-entrant lock stripe pool for thread safety with O(1) constant memory usage
 _NUM_LOCK_STRIPES = 64
-_lock_stripes = [threading.Lock() for _ in range(_NUM_LOCK_STRIPES)]
+_lock_stripes = [threading.RLock() for _ in range(_NUM_LOCK_STRIPES)]
 
 
-def _get_file_lock(filepath: str) -> threading.Lock:
+def _get_file_lock(filepath: str) -> threading.RLock:
     """Get striped lock based on filepath hash (thread-safe with zero memory growth)"""
     index = abs(hash(filepath)) % _NUM_LOCK_STRIPES
     return _lock_stripes[index]
@@ -59,51 +59,55 @@ class JSONStorage:
     @classmethod
     def update(cls, filepath: str, key: str, value: Any) -> None:
         """Update specific key in JSON file"""
-        data = cls.read(filepath)
-        data[key] = value
-        cls.write(filepath, data)
+        with cls.file_lock(filepath):
+            data = cls.read(filepath)
+            data[key] = value
+            cls.write(filepath, data)
     
     @classmethod
     def append_to_list(cls, filepath: str, list_key: str, item: Dict) -> None:
         """Append item to a list in JSON file"""
-        data = cls.read(filepath)
-        if list_key not in data:
-            data[list_key] = []
-        data[list_key].append(item)
-        cls.write(filepath, data)
+        with cls.file_lock(filepath):
+            data = cls.read(filepath)
+            if list_key not in data:
+                data[list_key] = []
+            data[list_key].append(item)
+            cls.write(filepath, data)
     
     @classmethod
     def update_in_list(cls, filepath: str, list_key: str, 
                        item_id: str, updates: Dict, id_field: str = 'id') -> bool:
         """Update item in a list by ID"""
-        data = cls.read(filepath)
-        if list_key not in data:
+        with cls.file_lock(filepath):
+            data = cls.read(filepath)
+            if list_key not in data:
+                return False
+            
+            for i, item in enumerate(data[list_key]):
+                if item.get(id_field) == item_id:
+                    data[list_key][i].update(updates)
+                    data[list_key][i]['updated_at'] = get_timestamp()
+                    cls.write(filepath, data)
+                    return True
             return False
-        
-        for i, item in enumerate(data[list_key]):
-            if item.get(id_field) == item_id:
-                data[list_key][i].update(updates)
-                data[list_key][i]['updated_at'] = get_timestamp()
-                cls.write(filepath, data)
-                return True
-        return False
     
     @classmethod
     def delete_from_list(cls, filepath: str, list_key: str, 
                          item_id: str, id_field: str = 'id') -> bool:
         """Delete item from a list by ID"""
-        data = cls.read(filepath)
-        if list_key not in data:
+        with cls.file_lock(filepath):
+            data = cls.read(filepath)
+            if list_key not in data:
+                return False
+            
+            original_length = len(data[list_key])
+            data[list_key] = [item for item in data[list_key] 
+                              if item.get(id_field) != item_id]
+            
+            if len(data[list_key]) < original_length:
+                cls.write(filepath, data)
+                return True
             return False
-        
-        original_length = len(data[list_key])
-        data[list_key] = [item for item in data[list_key] 
-                          if item.get(id_field) != item_id]
-        
-        if len(data[list_key]) < original_length:
-            cls.write(filepath, data)
-            return True
-        return False
     
     @classmethod
     def find_in_list(cls, filepath: str, list_key: str, 

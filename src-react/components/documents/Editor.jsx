@@ -11,7 +11,7 @@ import { documentsApi } from '../../api';
 // Imports sau khi refactor
 import './Editor.css';
 import './CustomQuillImage';
-import { readFileAsDataURL, compressImageToWebP, compressImageToBlob, formats } from './editorUtils';
+import { readFileAsDataURL, compressImageToWebP, compressImageToBlob, convertDeltaToHtml, formats } from './editorUtils';
 import TableTools from './TableTools';
 import IconPicker from './IconPicker';
 import CommentsSection from './CommentsSection';
@@ -859,53 +859,7 @@ function Editor() {
         const docContent = currentDocument.content;
         if (typeof docContent === 'object' && docContent.ops) {
           setContent(docContent);
-          try {
-            const tempContainer = document.createElement('div');
-            tempContainer.style.display = 'none';
-            document.body.appendChild(tempContainer);
-            const tempQuill = new Quill(tempContainer, {
-              readOnly: true,
-              modules: {
-                syntax: true
-              }
-            });
-            tempQuill.setContents(docContent);
-            
-            console.log('[DEBUG-HIGHLIGHT] Document Delta content:', JSON.stringify(docContent));
-            console.log('[DEBUG-HIGHLIGHT] window.hljs exists:', !!window.hljs);
-
-            // Map data-language attributes to highlight.js classes and run highlighting synchronously
-            tempContainer.querySelectorAll('pre.ql-syntax').forEach((block) => {
-              const parentContainer = block.closest('.ql-code-block-container');
-              const lang = block.getAttribute('data-language') || (parentContainer ? parentContainer.getAttribute('data-language') : null);
-              
-              console.log(`[DEBUG-HIGHLIGHT] Processing code block. Language found: "${lang}". HTML before:`, block.outerHTML);
-              
-              if (lang && lang !== 'plain') {
-                block.classList.add(`language-${lang}`);
-              }
-              
-              if (window.hljs) {
-                try {
-                  if (window.hljs.highlightElement) {
-                    window.hljs.highlightElement(block);
-                  } else if (window.hljs.highlightBlock) {
-                    window.hljs.highlightBlock(block);
-                  }
-                  console.log('[DEBUG-HIGHLIGHT] Synchronous highlight complete. HTML after:', block.outerHTML);
-                } catch (e) {
-                  console.error('[DEBUG-HIGHLIGHT] Failed to highlight block:', e);
-                }
-              } else {
-                console.warn('[DEBUG-HIGHLIGHT] hljs is not available on window object!');
-              }
-            });
-
-            setHtmlContent(tempContainer.querySelector('.ql-editor').innerHTML);
-            document.body.removeChild(tempContainer);
-          } catch (err) {
-            console.error('Error converting Delta to HTML', err);
-          }
+          setHtmlContent(convertDeltaToHtml(docContent, Quill));
         } else if (typeof docContent === 'string') {
           setContent(docContent);
           setHtmlContent(docContent);
@@ -1422,53 +1376,7 @@ function Editor() {
       const docContent = currentDocument.content;
       setContent(docContent);
       if (typeof docContent === 'object' && docContent.ops) {
-        try {
-          const tempContainer = document.createElement('div');
-          tempContainer.style.display = 'none';
-          document.body.appendChild(tempContainer);
-          const tempQuill = new Quill(tempContainer, {
-            readOnly: true,
-            modules: {
-              syntax: true
-            }
-          });
-          tempQuill.setContents(docContent);
-          
-          console.log('[DEBUG-HIGHLIGHT] Document Delta content:', JSON.stringify(docContent));
-          console.log('[DEBUG-HIGHLIGHT] window.hljs exists:', !!window.hljs);
-
-          // Map data-language attributes to highlight.js classes and run highlighting synchronously
-          tempContainer.querySelectorAll('pre.ql-syntax').forEach((block) => {
-            const parentContainer = block.closest('.ql-code-block-container');
-            const lang = block.getAttribute('data-language') || (parentContainer ? parentContainer.getAttribute('data-language') : null);
-            
-            console.log(`[DEBUG-HIGHLIGHT] Processing code block. Language found: "${lang}". HTML before:`, block.outerHTML);
-            
-            if (lang && lang !== 'plain') {
-              block.classList.add(`language-${lang}`);
-            }
-            
-            if (window.hljs) {
-              try {
-                if (window.hljs.highlightElement) {
-                  window.hljs.highlightElement(block);
-                } else if (window.hljs.highlightBlock) {
-                  window.hljs.highlightBlock(block);
-                }
-                console.log('[DEBUG-HIGHLIGHT] Synchronous highlight complete. HTML after:', block.outerHTML);
-              } catch (e) {
-                console.error('[DEBUG-HIGHLIGHT] Failed to highlight block:', e);
-              }
-            } else {
-              console.warn('[DEBUG-HIGHLIGHT] hljs is not available on window object!');
-            }
-          });
-
-          setHtmlContent(tempContainer.querySelector('.ql-editor').innerHTML);
-          document.body.removeChild(tempContainer);
-        } catch (err) {
-          console.error(err);
-        }
+        setHtmlContent(convertDeltaToHtml(docContent, Quill));
       } else if (typeof docContent === 'string') {
         setHtmlContent(docContent);
       }
